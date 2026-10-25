@@ -1,0 +1,6 @@
+{
+  "name": "PAI INOVATIF - UPT SMPN 2 Rebang Tangkas",
+  "description": "Platform Digital Pembelajaran Pendidikan Agama Islam untuk Guru dan Siswa UPT SMPN 2 Rebang Tangkas",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
