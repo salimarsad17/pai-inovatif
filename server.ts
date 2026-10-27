@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -371,6 +372,11 @@ app.post('/api/ai/generate-stream', async (req: Request, res: Response) => {
 // Setup Vite middlewares or static files
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
+
+  const publicPath = path.resolve(__dirname, 'public');
+  if (fs.existsSync(publicPath)) {
+    app.use(express.static(publicPath));
+  }
 
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');

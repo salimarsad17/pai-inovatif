@@ -1,0 +1,670 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <!-- Sky & Atmosphere Gradients -->
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="40%" y2="100%">
+      <stop offset="0%" stop-color="#050b1a" />
+      <stop offset="25%" stop-color="#0a1936" />
+      <stop offset="50%" stop-color="#112d56" />
+      <stop offset="70%" stop-color="#1e4e79" />
+      <stop offset="85%" stop-color="#b45309" />
+      <stop offset="93%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#fef3c7" />
+    </linearGradient>
+
+    <radialGradient id="sunGlow" cx="62%" cy="68%" r="45%">
+      <stop offset="0%" stop-color="#fffbeb" stop-opacity="1" />
+      <stop offset="20%" stop-color="#fde68a" stop-opacity="0.8" />
+      <stop offset="45%" stop-color="#f59e0b" stop-opacity="0.45" />
+      <stop offset="70%" stop-color="#d97706" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Islamic Geometric Pattern for Sky -->
+    <pattern id="islamicStarSky" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M60,0 L73,42 L117,42 L81,68 L95,110 L60,84 L25,110 L39,68 L3,42 L47,42 Z" fill="none" stroke="#60a5fa" stroke-width="0.8" opacity="0.08" />
+      <circle cx="60" cy="60" r="45" fill="none" stroke="#93c5fd" stroke-width="0.5" opacity="0.06" />
+      <path d="M0,60 L42,47 L42,3 L68,39 L110,25 L84,60 L110,95 L68,81 L42,117 L42,73 Z" fill="none" stroke="#fcd34d" stroke-width="0.5" opacity="0.05" />
+    </pattern>
+
+    <!-- Mashrabiya Lattice Pattern -->
+    <pattern id="mashrabiya" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M15,0 L30,15 L15,30 L0,15 Z" fill="none" stroke="#ca8a04" stroke-width="1.2" opacity="0.35" />
+      <circle cx="15" cy="15" r="4" fill="#ca8a04" opacity="0.25" />
+      <path d="M0,0 L30,30 M30,0 L0,30" stroke="#0d9488" stroke-width="0.6" opacity="0.25" />
+    </pattern>
+
+    <!-- Modern Architecture Materials -->
+    <linearGradient id="domeTealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5eead4" />
+      <stop offset="25%" stop-color="#0f766e" />
+      <stop offset="60%" stop-color="#115e59" />
+      <stop offset="85%" stop-color="#134e4a" />
+      <stop offset="100%" stop-color="#042f2e" />
+    </linearGradient>
+
+    <linearGradient id="domeRibGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#eab308" />
+      <stop offset="100%" stop-color="#a16207" />
+    </linearGradient>
+
+    <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="35%" stop-color="#f59e0b" />
+      <stop offset="70%" stop-color="#b45309" />
+      <stop offset="100%" stop-color="#78350f" />
+    </linearGradient>
+
+    <linearGradient id="marbleWhite" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#f1f5f9" />
+      <stop offset="100%" stop-color="#cbd5e1" />
+    </linearGradient>
+
+    <linearGradient id="schoolGlassGrad" x1="0%" y1="0%" x2="100%" y2="60%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.7" />
+      <stop offset="40%" stop-color="#0284c7" stop-opacity="0.85" />
+      <stop offset="80%" stop-color="#082f49" stop-opacity="0.95" />
+    </linearGradient>
+
+    <linearGradient id="louverGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+
+    <!-- Glow & Lighting Filters -->
+    <filter id="nurRadiance" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="16" result="blur1" />
+      <feGaussianBlur stdDeviation="35" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <radialGradient id="quranNurGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+      <stop offset="25%" stop-color="#fef08a" stop-opacity="0.9" />
+      <stop offset="55%" stop-color="#f59e0b" stop-opacity="0.5" />
+      <stop offset="80%" stop-color="#ca8a04" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#ca8a04" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Water & Floor Reflection Gradients -->
+    <linearGradient id="poolSurface" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" stop-opacity="0.9" />
+      <stop offset="30%" stop-color="#0e3b43" stop-opacity="0.85" />
+      <stop offset="70%" stop-color="#064e3b" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#022c22" stop-opacity="0.95" />
+    </linearGradient>
+
+    <linearGradient id="mistGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fed7aa" stop-opacity="0.3" />
+      <stop offset="50%" stop-color="#fef08a" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#fef08a" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Student Uniform & Skin Gradients -->
+    <linearGradient id="skinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbd5b5" />
+      <stop offset="60%" stop-color="#e0a980" />
+      <stop offset="100%" stop-color="#b87a50" />
+    </linearGradient>
+
+    <linearGradient id="peciGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="45%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <linearGradient id="shirtGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="70%" stop-color="#e2e8f0" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+
+    <linearGradient id="pantsNavy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="50%" stop-color="#172554" />
+      <stop offset="100%" stop-color="#091129" />
+    </linearGradient>
+
+    <linearGradient id="woodRekal" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#854d0e" />
+      <stop offset="40%" stop-color="#a16207" />
+      <stop offset="70%" stop-color="#713f12" />
+      <stop offset="100%" stop-color="#422006" />
+    </linearGradient>
+  </defs>
+
+  <!-- ==================== BACKGROUND: SKY & CELESTIAL ==================== -->
+  <rect x="0" y="0" width="1920" height="1080" fill="url(#skyGrad)" />
+  <rect x="0" y="0" width="1920" height="650" fill="url(#islamicStarSky)" />
+
+  <!-- Dawn Sun Rays & Volumetric Flare (Behind Mosque) -->
+  <circle cx="1200" cy="620" r="480" fill="url(#sunGlow)" />
+  <g opacity="0.3" filter="url(#softGlow)">
+    <polygon points="1200,620 -100,0 300,-100" fill="#fef08a" />
+    <polygon points="1200,620 400,-100 800,-50" fill="#fde047" />
+    <polygon points="1200,620 950,-50 1350,-80" fill="#fed7aa" />
+    <polygon points="1200,620 1600,-50 1920,200" fill="#fef08a" />
+    <polygon points="1200,620 1800,300 2000,600" fill="#fde047" />
+    <polygon points="1200,620 0,350 0,650" fill="#fbcfe8" opacity="0.25" />
+  </g>
+
+  <!-- Distant Mountain Silhouettes (Bukit Barisan range feeling - Sumatra/Lampung setting) -->
+  <path d="M0,660 Q260,610 520,635 T1050,620 T1500,640 Q1720,625 1920,650 L1920,740 L0,740 Z" fill="#132742" opacity="0.65" />
+  <path d="M0,685 Q320,650 680,670 T1340,655 Q1680,665 1920,675 L1920,770 L0,770 Z" fill="#0f344d" opacity="0.8" />
+
+  <!-- Morning Mist Layer over Horizon -->
+  <rect x="0" y="600" width="1920" height="150" fill="url(#mistGrad)" />
+
+  <!-- ==================== MIDGROUND: ARCHITECTURE ==================== -->
+
+  <!-- Left/Mid-Left: Modern SMPN 2 Rebang Tangkas School Complex -->
+  <!-- School Building Wing Behind Trees -->
+  <g id="SchoolBuilding">
+    <!-- Main School Block -->
+    <rect x="180" y="520" width="460" height="170" fill="url(#marbleWhite)" />
+    <!-- Modern Roof Overhang & Parapet with Green Accent -->
+    <polygon points="160,520 660,520 640,505 170,505" fill="#047857" />
+    <rect x="175" y="500" width="470" height="6" fill="#10b981" />
+
+    <!-- Glass Curtain Walls & Classrooms with Geometric Louvers -->
+    <!-- Floor 2 -->
+    <rect x="200" y="530" width="410" height="55" fill="url(#schoolGlassGrad)" />
+    <!-- Architectural Louvers (Brite-Soleil) Floor 2 -->
+    <g fill="#059669">
+      <rect x="210" y="527" width="5" height="60" />
+      <rect x="235" y="527" width="5" height="60" />
+      <rect x="260" y="527" width="5" height="60" />
+      <rect x="285" y="527" width="5" height="60" />
+      <rect x="310" y="527" width="5" height="60" />
+      <rect x="335" y="527" width="5" height="60" />
+      <rect x="360" y="527" width="5" height="60" />
+      <rect x="385" y="527" width="5" height="60" />
+      <rect x="410" y="527" width="5" height="60" />
+      <rect x="435" y="527" width="5" height="60" />
+      <rect x="460" y="527" width="5" height="60" />
+      <rect x="485" y="527" width="5" height="60" />
+      <rect x="510" y="527" width="5" height="60" />
+      <rect x="535" y="527" width="5" height="60" />
+      <rect x="560" y="527" width="5" height="60" />
+      <rect x="585" y="527" width="5" height="60" />
+    </g>
+
+    <!-- Intermediate Modern Slab -->
+    <rect x="190" y="595" width="435" height="12" fill="#0f172a" />
+    <rect x="190" y="600" width="435" height="3" fill="#38bdf8" />
+
+    <!-- Floor 1 Glass Corridor -->
+    <rect x="200" y="612" width="410" height="65" fill="url(#schoolGlassGrad)" />
+    <!-- Vertical Mullions -->
+    <g fill="#047857" opacity="0.9">
+      <rect x="250" y="612" width="6" height="65" />
+      <rect x="310" y="612" width="6" height="65" />
+      <rect x="370" y="612" width="6" height="65" />
+      <rect x="430" y="612" width="6" height="65" />
+      <rect x="490" y="612" width="6" height="65" />
+      <rect x="550" y="612" width="6" height="65" />
+    </g>
+
+    <!-- Signage Banner on School Façade -->
+    <rect x="240" y="540" width="310" height="22" rx="4" fill="#0f172a" opacity="0.85" stroke="#10b981" stroke-width="1" />
+    <text x="395" y="555" fill="#f8fafc" font-family="'Inter', 'Montserrat', 'Segoe UI', sans-serif" font-weight="700" font-size="11" letter-spacing="3" text-anchor="middle">UPT SMPN 2 REBANG TANGKAS</text>
+
+    <!-- Indonesian National Flagpole (Sang Saka Merah Putih) -->
+    <line x1="140" y1="440" x2="140" y2="700" stroke="#94a3b8" stroke-width="3.5" />
+    <circle cx="140" cy="438" r="4.5" fill="#eab308" />
+    <!-- Waving Flag (Merah Putih) -->
+    <g filter="url(#softGlow)">
+      <!-- Red Top Stripe -->
+      <path d="M142,442 C165,438 185,455 210,446 L210,466 C185,475 165,458 142,462 Z" fill="#dc2626" />
+      <!-- White Bottom Stripe -->
+      <path d="M142,462 C165,458 185,475 210,466 L210,486 C185,495 165,478 142,482 Z" fill="#ffffff" />
+    </g>
+
+    <!-- Covered Connecting Walkway to Mosque with Geometric Arches -->
+    <path d="M635,630 L800,630 L800,695 L635,695 Z" fill="#e2e8f0" />
+    <path d="M650,695 L650,650 Q665,635 680,650 L680,695 Z" fill="#092d3b" />
+    <path d="M700,695 L700,650 Q715,635 730,650 L730,695 Z" fill="#092d3b" />
+    <path d="M750,695 L750,650 Q765,635 780,650 L780,695 Z" fill="#092d3b" />
+    <rect x="630" y="624" width="175" height="7" fill="#059669" />
+  </g>
+
+  <!-- MIDGROUND (Center & Right): The Grand Modern Futuristic Mosque -->
+  <g id="GrandModernMosque">
+    <!-- Mosque Podium & Terrace Platform -->
+    <polygon points="700,710 1780,710 1850,750 620,750" fill="url(#marbleWhite)" />
+    <polygon points="620,750 1850,750 1850,765 620,765" fill="#94a3b8" />
+
+    <!-- Left Flanking Futuristic Minaret -->
+    <g id="LeftMinaret">
+      <!-- Minaret Base -->
+      <polygon points="760,710 795,710 805,430 750,430" fill="url(#marbleWhite)" />
+      <!-- LED Vertical Lighting Strip -->
+      <line x1="777" y1="710" x2="777" y2="430" stroke="#38bdf8" stroke-width="2.5" filter="url(#softGlow)" />
+      <polygon points="745,430 810,430 805,415 750,415" fill="#0f766e" />
+      <polygon points="752,415 803,415 800,260 755,260" fill="url(#marbleWhite)" />
+      <!-- Gold Mashrabiya insets -->
+      <rect x="765" y="290" width="25" height="90" fill="url(#mashrabiya)" stroke="#ca8a04" stroke-width="1" />
+      <line x1="777" y1="415" x2="777" y2="260" stroke="#f59e0b" stroke-width="2" />
+      <!-- Minaret Spire & Balcony -->
+      <polygon points="742,260 813,260 807,248 748,248" fill="#eab308" />
+      <polygon points="758,248 797,248 777,150" fill="url(#domeTealGrad)" />
+      <!-- Crescent Spire Finial -->
+      <line x1="777" y1="150" x2="777" y2="120" stroke="#f59e0b" stroke-width="3" />
+      <path d="M777,122 A6,6 0 1,1 783,116 A7,7 0 1,0 777,122 Z" fill="#fef08a" filter="url(#softGlow)" />
+    </g>
+
+    <!-- Mosque Main Geometric Grand Arch (Iwan) -->
+    <path d="M960,710 L960,490 Q960,400 1100,380 Q1240,400 1240,490 L1240,710 Z" fill="#091e30" />
+    <path d="M975,710 L975,500 Q975,415 1100,400 Q1225,415 1225,500 L1225,710 Z" fill="none" stroke="url(#goldAccent)" stroke-width="4" />
+    <!-- Interior Geometric Glow -->
+    <path d="M990,710 L990,515 Q990,435 1100,420 Q1210,435 1210,515 L1210,710 Z" fill="#0f3d4c" opacity="0.8" />
+    <!-- Inner Radiant Mashrabiya Screen -->
+    <path d="M1010,710 L1010,530 Q1010,450 1100,440 Q1190,450 1190,530 L1190,710 Z" fill="url(#mashrabiya)" opacity="0.6" />
+    <!-- Warm Interior Sanctuary Chandelier Glow -->
+    <circle cx="1100" cy="540" r="65" fill="#fef08a" opacity="0.25" filter="url(#nurRadiance)" />
+    <line x1="1100" y1="440" x2="1100" y2="520" stroke="#f59e0b" stroke-width="2" />
+    <!-- Stylized Chandelier Ring -->
+    <ellipse cx="1100" cy="525" rx="35" ry="10" fill="none" stroke="#fde047" stroke-width="2" filter="url(#softGlow)" />
+
+    <!-- Secondary Mosque Wings (Right & Left flanking pavilions) -->
+    <rect x="800" y="550" width="170" height="160" fill="url(#marbleWhite)" />
+    <!-- Windows Row with Modern Islamic Pointed Arch Profile -->
+    <g fill="#0e3a47" stroke="#047857" stroke-width="1.5">
+      <path d="M820,670 L820,600 Q835,580 850,600 L850,670 Z" />
+      <path d="M865,670 L865,600 Q880,580 895,600 L895,670 Z" />
+      <path d="M910,670 L910,600 Q925,580 940,600 L940,670 Z" />
+    </g>
+
+    <rect x="1230" y="550" width="260" height="160" fill="url(#marbleWhite)" />
+    <g fill="#0e3a47" stroke="#047857" stroke-width="1.5">
+      <path d="M1255,670 L1255,600 Q1270,580 1285,600 L1285,670 Z" />
+      <path d="M1305,670 L1305,600 Q1320,580 1335,600 L1335,670 Z" />
+      <path d="M1355,670 L1355,600 Q1370,580 1385,600 L1385,670 Z" />
+      <path d="M1405,670 L1405,600 Q1420,580 1435,600 L1435,670 Z" />
+      <path d="M1455,670 L1455,600 Q1470,580 1485,600 L1485,670 Z" />
+    </g>
+
+    <!-- Futuristic Polygonal High Dome (Styled like Masjid Al-Jabbar & contemporary faceted crystal domes) -->
+    <g id="FuturisticDome">
+      <!-- Dome Base Drum (Octagonal Cylinder) -->
+      <polygon points="920,440 1280,440 1250,380 950,380" fill="#0f172a" />
+      <!-- Dome Silhouette / Outer Facets -->
+      <path d="M940,380 C950,220 1020,160 1100,120 C1180,160 1250,220 1260,380 Z" fill="url(#domeTealGrad)" />
+
+      <!-- Faceted Parametric Tessellations on Dome surface -->
+      <!-- Left Triangular facets -->
+      <polygon points="940,380 990,300 970,380" fill="#2dd4bf" opacity="0.4" />
+      <polygon points="990,300 1045,230 1020,320" fill="#14b8a6" opacity="0.5" />
+      <polygon points="1020,320 970,380 990,300" fill="#0f766e" opacity="0.6" />
+      <polygon points="1045,230 1100,170 1070,260" fill="#5eead4" opacity="0.45" />
+      <polygon points="1070,260 1020,320 1045,230" fill="#0d9488" opacity="0.6" />
+
+      <!-- Center Spine Ribs -->
+      <polygon points="1100,120 1070,260 1100,280" fill="#fef08a" opacity="0.4" />
+      <polygon points="1100,120 1130,260 1100,280" fill="#d97706" opacity="0.4" />
+
+      <!-- Right Triangular facets -->
+      <polygon points="1260,380 1210,300 1230,380" fill="#0d9488" opacity="0.4" />
+      <polygon points="1210,300 1155,230 1180,320" fill="#115e59" opacity="0.5" />
+      <polygon points="1180,320 1230,380 1210,300" fill="#042f2e" opacity="0.6" />
+      <polygon points="1155,230 1100,170 1130,260" fill="#14b8a6" opacity="0.55" />
+      <polygon points="1130,260 1180,320 1155,230" fill="#0f766e" opacity="0.5" />
+
+      <!-- Golden Diagrid Ribs Structural Overlay -->
+      <path d="M1100,120 L970,380 M1100,120 L1020,380 M1100,120 L1070,380 M1100,120 L1130,380 M1100,120 L1180,380 M1100,120 L1230,380" stroke="url(#domeRibGold)" stroke-width="2.5" fill="none" opacity="0.85" />
+      <path d="M950,330 Q1100,310 1250,330" stroke="url(#domeRibGold)" stroke-width="2" fill="none" opacity="0.75" />
+      <path d="M980,260 Q1100,240 1220,260" stroke="url(#domeRibGold)" stroke-width="2" fill="none" opacity="0.75" />
+      <path d="M1030,195 Q1100,185 1170,195" stroke="url(#domeRibGold)" stroke-width="2" fill="none" opacity="0.75" />
+
+      <!-- Master Crescent (Hilal) & Golden Spire on Main Dome -->
+      <line x1="1100" y1="120" x2="1100" y2="60" stroke="url(#domeRibGold)" stroke-width="4.5" />
+      <circle cx="1100" cy="85" r="9" fill="url(#goldAccent)" />
+      <circle cx="1100" cy="65" r="6" fill="url(#goldAccent)" />
+      <!-- Crescent Blade -->
+      <path d="M1100,64 A18,18 0 1,1 1116,42 A21,21 0 1,0 1100,64 Z" fill="#fef08a" stroke="#ca8a04" stroke-width="1" filter="url(#nurRadiance)" />
+    </g>
+
+    <!-- Right Soaring Architectural Minaret (Ultra-Tall, Majestic) -->
+    <g id="RightMinaret">
+      <!-- Minaret Base/Shaft -->
+      <polygon points="1490,710 1540,710 1525,280 1500,280" fill="url(#marbleWhite)" />
+      <!-- LED Spine & Horizontal Bands -->
+      <line x1="1512" y1="710" x2="1512" y2="280" stroke="#38bdf8" stroke-width="3" filter="url(#softGlow)" />
+      <rect x="1498" y="580" width="28" height="6" fill="#047857" />
+      <rect x="1500" y="440" width="24" height="6" fill="#047857" />
+
+      <!-- Mashrabiya Inset Shaft -->
+      <polygon points="1500,280 1525,280 1520,130 1505,130" fill="url(#mashrabiya)" stroke="#eab308" stroke-width="1.2" />
+      <!-- Glowing Geometric Balcony -->
+      <polygon points="1490,280 1535,280 1530,265 1495,265" fill="#eab308" />
+      <polygon points="1495,130 1530,130 1525,118 1500,118" fill="#eab308" />
+
+      <!-- Upper Spire & Modern Finial -->
+      <polygon points="1504,118 1521,118 1512,30" fill="url(#domeTealGrad)" />
+      <line x1="1512" y1="30" x2="1512" y2="5" stroke="#f59e0b" stroke-width="3" />
+      <circle cx="1512" cy="18" r="4" fill="#fef08a" />
+      <path d="M1512,12 A8,8 0 1,1 1520,2 A10,10 0 1,0 1512,12 Z" fill="#fef08a" filter="url(#softGlow)" />
+    </g>
+
+    <!-- Tropical Landscaping, Date Palms & Greenery Framing School & Mosque Courtyard -->
+    <g id="LandscapeGreenery">
+      <!-- Deep Green Bushes along terrace -->
+      <ellipse cx="660" cy="710" rx="45" ry="18" fill="#064e3b" />
+      <ellipse cx="710" cy="715" rx="55" ry="20" fill="#047857" />
+      <ellipse cx="770" cy="712" rx="40" ry="16" fill="#065f46" />
+      <ellipse cx="1250" cy="715" rx="60" ry="22" fill="#064e3b" />
+      <ellipse cx="1470" cy="715" rx="70" ry="22" fill="#065f46" />
+
+      <!-- Elegant Royal Palm Trees (Left Courtyard) -->
+      <!-- Palm 1 -->
+      <path d="M670,710 Q665,600 640,530" stroke="#78350f" stroke-width="6" fill="none" stroke-linecap="round" />
+      <path d="M640,530 Q580,510 540,535" stroke="#047857" stroke-width="3" fill="none" stroke-linecap="round" />
+      <path d="M640,530 Q600,480 560,490" stroke="#059669" stroke-width="3" fill="none" stroke-linecap="round" />
+      <path d="M640,530 Q630,460 625,450" stroke="#10b981" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M640,530 Q670,470 690,480" stroke="#059669" stroke-width="3" fill="none" stroke-linecap="round" />
+      <path d="M640,530 Q700,500 715,525" stroke="#047857" stroke-width="3" fill="none" stroke-linecap="round" />
+
+      <!-- Palm 2 -->
+      <path d="M720,710 Q725,580 750,490" stroke="#78350f" stroke-width="7" fill="none" stroke-linecap="round" />
+      <path d="M750,490 Q690,460 650,475" stroke="#047857" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M750,490 Q720,430 680,435" stroke="#059669" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M750,490 Q760,410 770,410" stroke="#10b981" stroke-width="4" fill="none" stroke-linecap="round" />
+      <path d="M750,490 Q800,440 820,455" stroke="#059669" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M750,490 Q815,480 830,510" stroke="#047857" stroke-width="3" fill="none" stroke-linecap="round" />
+    </g>
+  </g>
+
+  <!-- ==================== MIDGROUND (Left to Center): REFLECTING POOL ==================== -->
+  <!-- Sleek Modern Kolam Air Pantul (Reflecting Infinity Pool) -->
+  <g id="ReflectingPool">
+    <polygon points="0,750 1920,750 1920,950 0,950" fill="url(#poolSurface)" />
+
+    <!-- Inverted Reflected Imagery (Blurred Dome, School, Sky Lights) -->
+    <g opacity="0.35" filter="url(#softGlow)" transform="scale(1, -1) translate(0, -1500)">
+      <!-- Reflected Dome -->
+      <path d="M940,380 C950,220 1020,160 1100,120 C1180,160 1250,220 1260,380 Z" fill="#0f766e" />
+      <line x1="1100" y1="120" x2="1100" y2="50" stroke="#fef08a" stroke-width="6" />
+      <circle cx="1100" cy="50" r="14" fill="#fef08a" />
+      <!-- Reflected Minarets -->
+      <line x1="777" y1="450" x2="777" y2="120" stroke="#38bdf8" stroke-width="4" />
+      <line x1="1512" y1="450" x2="1512" y2="20" stroke="#38bdf8" stroke-width="4" />
+      <!-- Reflected School Windows -->
+      <rect x="200" y="530" width="410" height="120" fill="#0284c7" />
+    </g>
+
+    <!-- Water Ripple Striations & Surface Glare Lines -->
+    <path d="M0,770 Q480,765 960,770 T1920,770" stroke="#38bdf8" stroke-width="1" opacity="0.4" fill="none" />
+    <path d="M0,795 Q400,790 900,795 T1920,795" stroke="#2dd4bf" stroke-width="1.2" opacity="0.3" fill="none" />
+    <path d="M0,830 Q540,820 1100,830 T1920,830" stroke="#5eead4" stroke-width="1.4" opacity="0.25" fill="none" />
+    <path d="M0,875 Q600,865 1200,875 T1920,875" stroke="#38bdf8" stroke-width="1" opacity="0.2" fill="none" />
+    <path d="M0,925 Q500,915 1050,925 T1920,925" stroke="#67e8f9" stroke-width="0.8" opacity="0.15" fill="none" />
+
+    <!-- Modern Recessed Pool Coping Edge with LED Glow -->
+    <line x1="0" y1="750" x2="1920" y2="750" stroke="#fcd34d" stroke-width="2.5" opacity="0.85" filter="url(#softGlow)" />
+    <!-- Floating Light Mist on Water -->
+    <ellipse cx="600" cy="760" rx="500" ry="15" fill="#fef08a" opacity="0.12" filter="url(#softGlow)" />
+    <ellipse cx="1400" cy="765" rx="400" ry="12" fill="#99f6e4" opacity="0.15" filter="url(#softGlow)" />
+  </g>
+
+  <!-- ==================== FOREGROUND: INDOOR-OUTDOOR MARBLE VERANDA ==================== -->
+  <!-- Modern Geometric Marble Terrace Platform where Student Sits -->
+  <polygon points="650,860 1920,840 1920,1080 500,1080" fill="url(#marbleWhite)" />
+  <!-- Veranda Drop Edge / Dark Reveal Joint -->
+  <polygon points="500,1080 650,860 635,860 480,1080" fill="#64748b" />
+  <line x1="650" y1="860" x2="1920" y2="840" stroke="#f59e0b" stroke-width="3" filter="url(#softGlow)" />
+
+  <!-- Veranda Polished Floor Tile Joints (Isometric Perspective) -->
+  <g stroke="#cbd5e1" stroke-width="1.2" opacity="0.7">
+    <line x1="850" y1="858" x2="720" y2="1080" />
+    <line x1="1100" y1="855" x2="1000" y2="1080" />
+    <line x1="1350" y1="850" x2="1290" y2="1080" />
+    <line x1="1620" y1="845" x2="1600" y2="1080" />
+    <!-- Horizontal Cross Lines -->
+    <line x1="605" y1="925" x2="1920" y2="905" />
+    <line x1="550" y1="1000" x2="1920" y2="980" />
+  </g>
+
+  <!-- Polished Floor Specular Reflection under the Student & Qur'an -->
+  <ellipse cx="1480" cy="980" rx="360" ry="60" fill="#fef08a" opacity="0.18" filter="url(#nurRadiance)" />
+
+  <!-- ==================== FOREGROUND (Right-Center): SMP STUDENT READING AL-QUR'AN ==================== -->
+  <g id="StudentAndQuran">
+
+    <!-- Ambient Shadow Beneath Student & Rekal -->
+    <ellipse cx="1470" cy="990" rx="280" ry="40" fill="#020617" opacity="0.65" filter="url(#softGlow)" />
+
+    <!-- === THE STUDENT (Indonesian SMP Boy) === -->
+    <!-- Seated respectfully in polite cross-legged / tasyahhud-like posture -->
+
+    <!-- Navy Blue SMP Uniform Pants / Lower Body -->
+    <g id="StudentLegs">
+      <!-- Left Thigh/Knee Folded -->
+      <path d="M1250,960 C1250,930 1320,900 1420,900 L1520,900 C1590,900 1660,930 1660,970 C1660,1010 1590,1015 1500,1015 C1390,1015 1250,1000 1250,960 Z" fill="url(#pantsNavy)" />
+      <!-- Crease highlights & shadow lines on navy trousers -->
+      <path d="M1310,950 Q1380,920 1470,930" stroke="#3b82f6" stroke-width="2" fill="none" opacity="0.4" />
+      <path d="M1520,930 Q1600,940 1640,975" stroke="#1d4ed8" stroke-width="2.5" fill="none" opacity="0.5" />
+      <!-- Student's Neat White Socks Visible at fold -->
+      <ellipse cx="1270" cy="980" rx="22" ry="14" fill="#f1f5f9" />
+    </g>
+
+    <!-- Crisp White SMP Short-Sleeve Uniform Shirt & Torso -->
+    <g id="StudentTorso">
+      <!-- Back & Body Contour -->
+      <path d="M1390,910 L1370,750 Q1375,690 1440,670 Q1490,660 1540,670 Q1595,690 1590,750 L1570,910 Z" fill="url(#shirtGrad)" />
+
+      <!-- Left Sleeve / Arm reaching forward toward Rekal -->
+      <path d="M1400,700 Q1350,750 1335,820 Q1330,850 1350,865 Q1370,875 1400,845 L1430,770 Z" fill="url(#shirtGrad)" />
+      <!-- Right Sleeve / Arm resting respectfully supporting posture -->
+      <path d="M1560,700 Q1610,750 1625,820 Q1630,855 1605,865 Q1580,875 1550,845 L1530,770 Z" fill="url(#shirtGrad)" />
+
+      <!-- Indonesian SMP Breast Pocket & Identity Badge -->
+      <rect x="1490" y="725" width="28" height="34" rx="2" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+      <!-- SMP Badge Logo (Kuning & Coklat Tua / Navy SMP OSIS Emblem) -->
+      <polygon points="1504,730 1514,736 1514,748 1504,754 1494,748 1494,736" fill="#1e3a8a" />
+      <circle cx="1504" cy="742" r="3.5" fill="#f59e0b" />
+
+      <!-- Shirt Collar with Warm Dawn Rim Light -->
+      <polygon points="1445,670 1475,715 1490,680" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <polygon points="1535,670 1505,715 1490,680" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <line x1="1490" y1="715" x2="1490" y2="820" stroke="#cbd5e1" stroke-width="1.5" />
+      <!-- Golden Rim Light on Back of Shirt (from Rising Sun) -->
+      <path d="M1570,900 L1590,750 Q1595,690 1540,670" fill="none" stroke="#fde047" stroke-width="3" filter="url(#softGlow)" />
+    </g>
+
+    <!-- Student's Hands (Holding & Hovering respectfully beside Quran) -->
+    <g id="StudentHands">
+      <!-- Left Hand touching side of the Rekal gently -->
+      <path d="M1340,860 Q1350,880 1375,875 Q1395,870 1395,850 L1370,840 Z" fill="url(#skinGrad)" />
+      <!-- Right Hand fingers neatly curled in reverence -->
+      <path d="M1580,860 Q1570,880 1545,875 Q1525,870 1525,850 L1550,840 Z" fill="url(#skinGrad)" />
+    </g>
+
+    <!-- Neck & Head with Indonesian Black Velvet Peci (Songkok) -->
+    <g id="StudentHead">
+      <!-- Neck -->
+      <path d="M1475,675 L1475,630 Q1490,635 1505,630 L1505,675 Z" fill="url(#skinGrad)" />
+      <!-- Warm rim on neck -->
+      <path d="M1505,635 L1505,670" stroke="#fde047" stroke-width="2" />
+
+      <!-- Head / Face Profile (Slightly tilted down toward Al-Qur'an in deep khusyu' / reverence) -->
+      <path d="M1450,600 Q1445,550 1485,540 Q1535,545 1535,600 Q1535,640 1490,645 Q1450,640 1450,600 Z" fill="url(#skinGrad)" />
+
+      <!-- Peaceful Facial Features -->
+      <!-- Closed/Downcast Eyelids in concentration and tadabbur -->
+      <path d="M1465,585 Q1475,592 1485,587" stroke="#6b3e26" stroke-width="2.5" fill="none" stroke-linecap="round" />
+      <path d="M1465,578 Q1475,574 1485,577" stroke="#4a2810" stroke-width="2" fill="none" />
+      <!-- Nose profile -->
+      <path d="M1485,585 Q1490,598 1483,605 L1477,605" stroke="#ba7349" stroke-width="1.8" fill="none" />
+      <!-- Gentle serene smile -->
+      <path d="M1472,618 Q1482,624 1490,618" stroke="#8c4320" stroke-width="2" fill="none" stroke-linecap="round" />
+      <!-- Ear -->
+      <path d="M1520,585 Q1530,580 1528,598 Q1525,610 1518,605 Z" fill="url(#skinGrad)" />
+
+      <!-- Traditional Indonesian Black Velvet Peci / Songkok -->
+      <path d="M1448,565 C1445,525 1460,505 1490,505 C1525,505 1540,525 1537,565 C1535,570 1450,570 1448,565 Z" fill="url(#peciGrad)" />
+      <!-- Velvet sheen highlight & gold thread rim line inside peci edge -->
+      <path d="M1450,563 Q1490,568 1535,563" stroke="#fcd34d" stroke-width="1.5" fill="none" opacity="0.8" />
+      <path d="M1460,525 Q1490,515 1520,525" stroke="#334155" stroke-width="2" fill="none" opacity="0.6" />
+      <!-- Golden rim light on back edge of peci -->
+      <path d="M1520,507 C1535,520 1538,540 1537,565" stroke="#fef08a" stroke-width="2.5" fill="none" filter="url(#softGlow)" />
+    </g>
+
+    <!-- === ELEGANT MODERN WOODEN REKAL (Quran Stand) === -->
+    <g id="MinimalistRekal">
+      <!-- Shadow of Rekal -->
+      <ellipse cx="1455" cy="890" rx="90" ry="18" fill="#000000" opacity="0.5" filter="url(#softGlow)" />
+
+      <!-- Left Leg (Interlocking X-frame with modern Islamic filigree cutouts) -->
+      <polygon points="1370,890 1420,830 1445,845 1395,905" fill="url(#woodRekal)" />
+      <polygon points="1395,905 1445,845 1460,855 1410,915" fill="#422006" />
+
+      <!-- Right Leg -->
+      <polygon points="1540,890 1490,830 1465,845 1515,905" fill="url(#woodRekal)" />
+      <polygon points="1515,905 1465,845 1450,855 1500,915" fill="#5c2e0b" />
+
+      <!-- Golden Brass Trim on Rekal edges -->
+      <line x1="1370" y1="890" x2="1420" y2="830" stroke="#fde047" stroke-width="2" />
+      <line x1="1540" y1="890" x2="1490" y2="830" stroke="#fde047" stroke-width="2" />
+
+      <!-- Front Rest Planks of Rekal -->
+      <polygon points="1375,830 1455,875 1455,860 1375,815" fill="#a16207" />
+      <polygon points="1535,830 1455,875 1455,860 1535,815" fill="#78350f" />
+    </g>
+
+    <!-- === THE HOLY AL-QUR'AN (Open & Radiating Divine Nur) === -->
+    <g id="HolyQuran">
+      <!-- Deep Green & Gold Hardcover Trim Extending outward -->
+      <path d="M1360,820 L1455,868 L1550,820 L1545,812 L1455,858 L1365,812 Z" fill="#064e3b" stroke="#ca8a04" stroke-width="2" />
+
+      <!-- Open Pages (Curved 3D open book aesthetic) -->
+      <!-- Left Page (Cream Gold Paper) -->
+      <path d="M1455,858 C1420,845 1380,820 1370,805 L1385,750 C1405,765 1435,785 1455,792 Z" fill="#fffbeb" stroke="#fde68a" stroke-width="1" />
+      <!-- Right Page -->
+      <path d="M1455,858 C1490,845 1530,820 1540,805 L1525,750 C1505,765 1475,785 1455,792 Z" fill="#fffdf5" stroke="#fde68a" stroke-width="1" />
+
+      <!-- Gold Page Edges Thickness / Leaf Layers -->
+      <path d="M1370,805 L1385,750 L1380,748 L1365,803 Z" fill="#eab308" />
+      <path d="M1540,805 L1525,750 L1530,748 L1545,803 Z" fill="#ca8a04" />
+
+      <!-- Fine Calligraphic & Verse Layout Lines (Rasm Utsmani style representation) -->
+      <!-- Left Page Border Frame (Unwan Gold Border) -->
+      <path d="M1448,845 C1425,835 1395,815 1388,802 L1398,760 C1415,772 1435,788 1448,795 Z" fill="none" stroke="#ca8a04" stroke-width="1.2" opacity="0.7" />
+      <!-- Micro-lines for Verses (Ayat) -->
+      <g stroke="#92400e" stroke-width="1" opacity="0.65" stroke-linecap="round">
+        <line x1="1402" y1="772" x2="1440" y2="795" />
+        <line x1="1400" y1="782" x2="1442" y2="805" />
+        <line x1="1396" y1="792" x2="1444" y2="817" />
+        <line x1="1392" y1="802" x2="1445" y2="829" />
+        <line x1="1390" y1="812" x2="1446" y2="840" />
+      </g>
+      <!-- Gold Ayat Marker Dots -->
+      <circle cx="1425" cy="783" r="1.5" fill="#eab308" />
+      <circle cx="1415" cy="803" r="1.5" fill="#eab308" />
+
+      <!-- Right Page Border Frame -->
+      <path d="M1462,845 C1485,835 1515,815 1522,802 L1512,760 C1495,772 1475,788 1462,795 Z" fill="none" stroke="#ca8a04" stroke-width="1.2" opacity="0.7" />
+      <!-- Micro-lines Right Page -->
+      <g stroke="#92400e" stroke-width="1" opacity="0.65" stroke-linecap="round">
+        <line x1="1508" y1="772" x2="1470" y2="795" />
+        <line x1="1510" y1="782" x2="1468" y2="805" />
+        <line x1="1514" y1="792" x2="1466" y2="817" />
+        <line x1="1518" y1="802" x2="1465" y2="829" />
+        <line x1="1520" y1="812" x2="1464" y2="840" />
+      </g>
+      <circle cx="1485" cy="783" r="1.5" fill="#eab308" />
+      <circle cx="1495" cy="803" r="1.5" fill="#eab308" />
+
+      <!-- Golden Bookmark Ribbon (Pita Pembatas Halaman) hanging down -->
+      <path d="M1455,792 Q1460,840 1445,885 Q1440,900 1450,910" stroke="#dc2626" stroke-width="2.5" fill="none" stroke-linecap="round" />
+      <polygon points="1447,908 1453,910 1450,916" fill="#eab308" />
+    </g>
+
+    <!-- === NUR ILAHI: RADIANT DIVINE LIGHT & SACRED GEOMETRY === -->
+    <g id="DivineNurAura">
+      <!-- Central Brilliant Quran Glow (Volumetric Source) -->
+      <circle cx="1455" cy="780" r="130" fill="url(#quranNurGrad)" filter="url(#nurRadiance)" />
+      <circle cx="1455" cy="780" r="45" fill="#ffffff" opacity="0.8" filter="url(#softGlow)" />
+
+      <!-- Ascending Geometric Star Mandalas (Spiritual Elevation) -->
+      <g stroke="url(#goldAccent)" stroke-width="1.5" fill="none" opacity="0.6" filter="url(#softGlow)">
+        <!-- 8-Pointed Star (Rub El Hizb) floating upward -->
+        <g transform="translate(1455, 740) scale(0.65) rotate(22)">
+          <rect x="-30" y="-30" width="60" height="60" />
+          <rect x="-30" y="-30" width="60" height="60" transform="rotate(45)" />
+          <circle cx="0" cy="0" r="12" stroke="#fde047" stroke-width="1" />
+        </g>
+        <g transform="translate(1455, 660) scale(0.4) rotate(45)">
+          <rect x="-30" y="-30" width="60" height="60" />
+          <rect x="-30" y="-30" width="60" height="60" transform="rotate(45)" />
+          <circle cx="0" cy="0" r="10" stroke="#fef08a" stroke-width="1" />
+        </g>
+      </g>
+
+      <!-- Soft Ray Shafts Illuminating the Student's Face & Hands -->
+      <g opacity="0.35" filter="url(#softGlow)">
+        <polygon points="1455,780 1430,620 1490,560" fill="#fef08a" />
+        <polygon points="1455,780 1350,830 1390,870" fill="#fde68a" />
+        <polygon points="1455,780 1520,870 1570,830" fill="#fde68a" />
+        <polygon points="1455,780 1400,500 1460,460" fill="#fef08a" opacity="0.4" />
+      </g>
+
+      <!-- Golden Floating Light Particles / Fireflies / Spiritual Bokeh Motes -->
+      <g fill="#fef08a" filter="url(#softGlow)">
+        <!-- Micro-orbs around book & student -->
+        <circle cx="1420" cy="720" r="3" opacity="0.9" />
+        <circle cx="1490" cy="710" r="2.5" opacity="0.8" />
+        <circle cx="1380" cy="760" r="2" opacity="0.7" />
+        <circle cx="1530" cy="740" r="3.5" opacity="0.85" />
+        <circle cx="1450" cy="670" r="2" opacity="0.9" />
+        <circle cx="1470" cy="630" r="2.5" opacity="0.75" />
+        <circle cx="1410" cy="650" r="1.8" opacity="0.6" />
+        <circle cx="1360" cy="700" r="2.8" opacity="0.5" />
+        <circle cx="1560" cy="680" r="2.2" opacity="0.6" />
+        <circle cx="1440" cy="590" r="1.5" opacity="0.8" />
+
+        <!-- Floating Higher into the Sky -->
+        <circle cx="1430" cy="490" r="3" opacity="0.6" />
+        <circle cx="1480" cy="450" r="2" opacity="0.5" />
+        <circle cx="1390" cy="410" r="2.5" opacity="0.4" />
+        <circle cx="1510" cy="380" r="3" opacity="0.5" />
+        <circle cx="1460" cy="320" r="2" opacity="0.4" />
+
+        <!-- Sparks over Reflecting Pool -->
+        <circle cx="1180" cy="740" r="2.5" opacity="0.7" fill="#67e8f9" />
+        <circle cx="1020" cy="755" r="2" opacity="0.6" fill="#fde047" />
+        <circle cx="880" cy="748" r="3" opacity="0.5" fill="#99f6e4" />
+        <circle cx="1310" cy="750" r="2.5" opacity="0.6" fill="#fde047" />
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== CINEMATIC POST-PROCESSING & VIGNETTE ==================== -->
+  <!-- Left Side Atmospheric Balance (Smooth gradient vignette keeping left login area legible & pristine) -->
+  <linearGradient id="vignetteLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#050b1a" stop-opacity="0.4" />
+    <stop offset="35%" stop-color="#0a192f" stop-opacity="0.15" />
+    <stop offset="65%" stop-color="#0a192f" stop-opacity="0" />
+  </linearGradient>
+  <rect x="0" y="0" width="1920" height="1080" fill="url(#vignetteLeft)" style="mix-blend-mode: multiply;" />
+
+  <!-- Perimeter Subtle Cinematic Vignette -->
+  <radialGradient id="edgeVignette" cx="50%" cy="50%" r="70%">
+    <stop offset="60%" stop-color="#000000" stop-opacity="0" />
+    <stop offset="85%" stop-color="#050b1a" stop-opacity="0.3" />
+    <stop offset="100%" stop-color="#020617" stop-opacity="0.65" />
+  </radialGradient>
+  <rect x="0" y="0" width="1920" height="1080" fill="url(#edgeVignette)" />
+</svg>
