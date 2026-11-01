@@ -20,9 +20,9 @@ import { authService } from '../services/authService';
 import { StudentItem, ClassItem } from '../types';
 
 export const StudentManagementView: React.FC = () => {
-  const [students, setStudents] = useState<StudentItem[]>([]);
-  const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<StudentItem[]>(() => dataService.getLocalStudents());
+  const [classes, setClasses] = useState<ClassItem[]>(() => dataService.getLocalClasses());
+  const [loading, setLoading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedSql, setCopiedSql] = useState(false);

@@ -31,6 +31,12 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [showSetupGuide, setShowSetupGuide] = useState<boolean>(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 800);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (role === 'siswa') {
@@ -54,8 +60,8 @@ function AppContent() {
     }
   }, [user]);
 
-  // Loading Screen
-  if (loading) {
+  // Loading Screen (max 800ms fallback)
+  if (loading && !timedOut) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-white">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-amber-500 flex items-center justify-center shadow-xl border border-amber-400/30 mb-4 animate-bounce">
@@ -101,6 +107,7 @@ function AppContent() {
     switch (currentMenu) {
       case 'beranda':
         return <DashboardTeacher onSelectMenu={handleSelectMenu} />;
+      case 'data_administrasi':
       case 'profil_sekolah':
         return <SchoolAndTeacherProfileView mode="school" />;
       case 'profil_guru':
@@ -112,7 +119,13 @@ function AppContent() {
       case 'perangkat_ajar':
         return <TeachingDocumentsView />;
       case 'bahan_ajar_ai':
-        return <AITeachingMaterialView />;
+        return <AITeachingMaterialView initialGradeLevel={7} />;
+      case 'bahan_ajar_k7':
+        return <AITeachingMaterialView initialGradeLevel={7} />;
+      case 'bahan_ajar_k8':
+        return <AITeachingMaterialView initialGradeLevel={8} />;
+      case 'bahan_ajar_k9':
+        return <AITeachingMaterialView initialGradeLevel={9} />;
       case 'jurnal_guru':
         return <TeacherJournalView />;
       case 'jurnal_sikap':
@@ -149,7 +162,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#1e2837] flex flex-col font-sans">
       {/* Top Navbar */}
       <Navbar
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -168,8 +181,14 @@ function AppContent() {
         />
 
         {/* Main Content Viewport */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-950/70">
-          <div className="max-w-7xl mx-auto pb-12">
+        <main
+          className={`flex-1 overflow-y-auto ${
+            currentMenu === 'beranda'
+              ? 'p-2 sm:p-3.5 bg-[#e9edf2] text-slate-800'
+              : 'p-4 sm:p-6 lg:p-8 bg-slate-900 text-slate-100'
+          }`}
+        >
+          <div className={`${currentMenu === 'beranda' ? 'w-full' : 'max-w-7xl mx-auto'} pb-12`}>
             {role === 'guru' || role === 'admin'
               ? renderTeacherView()
               : renderStudentView()}

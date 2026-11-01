@@ -19,30 +19,126 @@ import {
   AuditLog,
 } from '../types';
 
+// Fast timeout utility to prevent any network latency from freezing the UI
+export async function withTimeout<T>(promise: Promise<T>, ms = 2500, fallback: T): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timer);
+    return result;
+  } catch {
+    clearTimeout(timer);
+    return fallback;
+  }
+}
+
+// In-memory cache for sub-millisecond page switching & instant response
+const memoryCache: Record<string, { data: any; timestamp: number }> = {};
+const CACHE_TTL_MS = 25000; // 25 seconds cache
+
+function getCached<T>(key: string): T | null {
+  const entry = memoryCache[key];
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) return null;
+  return entry.data as T;
+}
+
+function setCached(key: string, data: any) {
+  memoryCache[key] = { data, timestamp: Date.now() };
+}
+
+function clearCache(prefix?: string) {
+  if (!prefix) {
+    Object.keys(memoryCache).forEach((k) => delete memoryCache[k]);
+  } else {
+    Object.keys(memoryCache).forEach((k) => {
+      if (k.startsWith(prefix)) delete memoryCache[k];
+    });
+  }
+}
+
 export const dataService = {
+  withTimeout,
+  // Clear cache helper for manual refresh
+  clearDataCache(prefix?: string) {
+    clearCache(prefix);
+  },
+
   // ================= SCHOOL SETTINGS =================
   async getSchoolSettings(): Promise<SchoolSettings> {
-    const { data, error } = await supabase
-      .from('school_settings')
-      .select('*')
-      .limit(1)
-      .maybeSingle();
+    const cached = getCached<SchoolSettings>('school_settings');
+    if (cached) return cached;
 
-    if (error || !data) {
-      return {
-        school_name: 'UPT SMPN 2 Rebang Tangkas',
-        school_address: 'Jl. Rebang Tangkas, Kec. Rebang Tangkas, Kab. Way Kanan, Lampung',
-        academic_year: '2025/2026',
-        semester: 'Ganjil',
-        motto: 'Guru Kreatif, Siswa Aktif',
-        headmaster_name: 'H. Ahmad Fauzi, S.Ag., M.Pd.',
-      };
+    const defaultSettings: SchoolSettings = {
+      school_name: 'UPT SMPN 2 Rebang Tangkas',
+      school_address: 'Jl. Rebang Tangkas, Kec. Rebang Tangkas, Kab. Way Kanan, Lampung',
+      academic_year: '2025/2026',
+      semester: 'Ganjil',
+      motto: 'Guru Kreatif, Siswa Aktif',
+      headmaster_name: 'H. Ahmad Fauzi, S.Ag., M.Pd.',
+    };
+
+    // Check localStorage first for instant response
+    if (typeof window !== 'undefined') {
+      try {
+        const local = localStorage.getItem('pai_school_settings');
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (parsed?.school_name) {
+            setCached('school_settings', parsed);
+            // Revalidate in background without blocking
+            this._fetchRemoteSettings();
+            return parsed;
+          }
+        }
+      } catch {}
     }
-    return data as SchoolSettings;
+
+    const res = await withTimeout(
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('school_settings')
+            .select('*')
+            .limit(1)
+            .maybeSingle();
+
+          if (!error && data) {
+            return data as SchoolSettings;
+          }
+        } catch {}
+        return defaultSettings;
+      })(),
+      2000,
+      defaultSettings
+    );
+
+    setCached('school_settings', res);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pai_school_settings', JSON.stringify(res));
+    }
+    return res;
+  },
+
+  async _fetchRemoteSettings() {
+    try {
+      const { data, error } = await supabase.from('school_settings').select('*').limit(1).maybeSingle();
+      if (!error && data) {
+        setCached('school_settings', data);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('pai_school_settings', JSON.stringify(data));
+        }
+      }
+    } catch {}
   },
 
   async updateSchoolSettings(settings: Partial<SchoolSettings>) {
+    clearCache('school_settings');
     const { data: existing } = await supabase.from('school_settings').select('id').limit(1).maybeSingle();
+    let res: any;
     if (existing?.id) {
       const { data, error } = await supabase
         .from('school_settings')
@@ -51,7 +147,7 @@ export const dataService = {
         .select()
         .single();
       if (error) throw error;
-      return data;
+      res = data;
     } else {
       const { data, error } = await supabase
         .from('school_settings')
@@ -59,7 +155,44 @@ export const dataService = {
         .select()
         .single();
       if (error) throw error;
-      return data;
+      res = data;
+    }
+    if (res && typeof window !== 'undefined') {
+      localStorage.setItem('pai_school_settings', JSON.stringify(res));
+      setCached('school_settings', res);
+    }
+    return res;
+  },
+
+  // ================= TEACHER METRICS (PROFIL PENGGUNA) =================
+  getTeacherCount(): number {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pai_total_teachers');
+      if (saved) return Math.max(1, parseInt(saved, 10));
+    }
+    return 1;
+  },
+
+  async fetchTeacherCount(): Promise<number> {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pai_total_teachers');
+      if (saved) return Math.max(1, parseInt(saved, 10));
+    }
+    try {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'guru');
+      if (!error && count && count > 0) {
+        return count;
+      }
+    } catch {}
+    return 1;
+  },
+
+  saveTeacherCount(count: number) {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pai_total_teachers', String(Math.max(1, count)));
     }
   },
 
@@ -122,6 +255,9 @@ export const dataService = {
 
   // ================= CLASSES =================
   async getClasses(): Promise<ClassItem[]> {
+    const cached = getCached<ClassItem[]>('classes');
+    if (cached) return cached;
+
     const defaultClasses: ClassItem[] = [
       { id: '3e99450a-dca2-4a58-a83c-5d1a20737dea', class_name: 'VII A', grade_level: 7, academic_year: '2025/2026', students_count: 0 },
       { id: '26202a8c-b677-4314-8916-b706acbcd7ca', class_name: 'VII B', grade_level: 7, academic_year: '2025/2026', students_count: 0 },
@@ -131,35 +267,32 @@ export const dataService = {
       { id: '3230bdbc-d4b1-48d5-b6a0-d90a6f99038e', class_name: 'IX B', grade_level: 9, academic_year: '2025/2026', students_count: 0 },
     ];
 
-    let dbClasses: ClassItem[] = [];
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        await supabase.auth.signInWithPassword({
-          email: 'salimarsad17@gmail.com',
-          password: 'guru321',
-        });
-      }
-
-      const { data, error } = await supabase
-        .from('classes')
-        .select(`
-          *,
-          homeroom_teacher:profiles!classes_homeroom_teacher_id_fkey(id, full_name, username)
-        `)
-        .order('grade_level', { ascending: true })
-        .order('class_name', { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        dbClasses = data as ClassItem[];
-      }
-    } catch (error: any) {
-      console.warn('Could not fetch classes from Supabase:', error.message);
-    }
-
     const localClasses = this.getLocalClasses();
-    let merged: ClassItem[] = [];
+    const fallbackList = localClasses.length > 0 ? localClasses : defaultClasses;
 
+    const fetchClassesPromise = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('classes')
+          .select(`
+            *,
+            homeroom_teacher:profiles!classes_homeroom_teacher_id_fkey(id, full_name, username)
+          `)
+          .order('grade_level', { ascending: true })
+          .order('class_name', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          return data as ClassItem[];
+        }
+      } catch (e: any) {
+        console.warn('Could not fetch classes from Supabase:', e?.message);
+      }
+      return [];
+    })();
+
+    const dbClasses = await withTimeout(fetchClassesPromise, 2000, []);
+
+    let merged: ClassItem[] = [];
     if (dbClasses.length > 0) {
       merged = [...dbClasses];
       localClasses.forEach((lc) => {
@@ -167,41 +300,26 @@ export const dataService = {
           merged.push(lc);
         }
       });
-    } else if (localClasses.length > 0) {
-      merged = [...localClasses];
     } else {
-      merged = [...defaultClasses];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('pai_custom_classes', JSON.stringify(defaultClasses));
-      }
+      merged = [...fallbackList];
     }
 
-    // Attach student count
+    // Attach student counts using localStudents in memory (sub-millisecond)
     const localStudents = this.getLocalStudents();
-    const result = await Promise.all(
-      merged.map(async (cls) => {
-        let count = 0;
-        try {
-          const { count: dbCount } = await supabase
-            .from('students')
-            .select('id', { count: 'exact', head: true })
-            .eq('class_id', cls.id);
-          count = dbCount || 0;
-        } catch {
-          // Ignore
-        }
-        const localCount = localStudents.filter((st) => st.class_id === cls.id).length;
-        return {
-          ...cls,
-          students_count: Math.max(count, localCount),
-        };
-      })
-    );
+    const result = merged.map((cls) => {
+      const localCount = localStudents.filter((st) => st.class_id === cls.id).length;
+      return {
+        ...cls,
+        students_count: Math.max(cls.students_count || 0, localCount),
+      };
+    });
 
+    setCached('classes', result);
     return result;
   },
 
   async createClass(item: { class_name: string; grade_level: number; academic_year: string; homeroom_teacher_id?: string | null }) {
+    clearCache('classes');
     try {
       const { data, error } = await supabase.from('classes').insert(item).select().single();
       if (!error && data) {
@@ -226,6 +344,7 @@ export const dataService = {
   },
 
   async updateClass(id: string, updates: Partial<ClassItem>) {
+    clearCache('classes');
     try {
       const { data, error } = await supabase.from('classes').update(updates).eq('id', id).select().single();
       if (!error && data) {
@@ -247,6 +366,7 @@ export const dataService = {
   },
 
   async deleteClass(id: string) {
+    clearCache('classes');
     try {
       await supabase.from('classes').delete().eq('id', id);
     } catch (e) {
@@ -260,132 +380,138 @@ export const dataService = {
 
   // ================= STUDENTS =================
   async getStudents(classId?: string, search?: string): Promise<StudentItem[]> {
-    let dbStudents: any[] = [];
-    const metaMap = new Map<string, any>();
+    const cachedAll = getCached<StudentItem[]>('students_all');
+    let combined: StudentItem[] = [];
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        await supabase.auth.signInWithPassword({
-          email: 'salimarsad17@gmail.com',
-          password: 'guru321',
-        });
-      }
+    if (cachedAll) {
+      combined = cachedAll;
+    } else {
+      let dbStudents: any[] = [];
+      const metaMap = new Map<string, any>();
 
-      // 1. Query students directly from Supabase
-      const { data: studentsData, error: stErr } = await supabase
-        .from('students')
-        .select(`
-          *,
-          class:classes(id, class_name, grade_level, academic_year)
-        `)
-        .order('student_number', { ascending: true });
+      const fetchStudentsPromise = (async () => {
+        try {
+          // 1. Query students directly from Supabase
+          const { data: studentsData, error: stErr } = await supabase
+            .from('students')
+            .select(`
+              *,
+              class:classes(id, class_name, grade_level, academic_year)
+            `)
+            .order('student_number', { ascending: true });
 
-      if (!stErr && studentsData) {
-        dbStudents = studentsData;
-      }
+          if (!stErr && studentsData) {
+            dbStudents = studentsData;
+          }
 
-      // 2. Query student metadata (names) from Supabase audit_logs
-      const { data: metasData } = await supabase
-        .from('audit_logs')
-        .select('entity_id, details')
-        .eq('action', 'STUDENT_META');
+          // 2. Query student metadata (names) from Supabase audit_logs
+          const { data: metasData } = await supabase
+            .from('audit_logs')
+            .select('entity_id, details')
+            .eq('action', 'STUDENT_META');
 
-      if (metasData) {
-        metasData.forEach((m) => {
-          const key = String(m.details?.student_number || m.entity_id || '').trim();
-          if (key) metaMap.set(key, m.details);
-        });
-      }
-    } catch (error: any) {
-      console.warn('Could not fetch students from Supabase:', error.message);
+          if (metasData) {
+            metasData.forEach((m) => {
+              const key = String(m.details?.student_number || m.entity_id || '').trim();
+              if (key) metaMap.set(key, m.details);
+            });
+          }
+        } catch (error: any) {
+          console.warn('Could not fetch students from Supabase:', error?.message);
+        }
+      })();
+
+      await withTimeout(fetchStudentsPromise, 2500, undefined);
+
+      const localStudents = this.getLocalStudents();
+      const map = new Map<string, StudentItem>();
+
+      // Process Supabase records
+      dbStudents.forEach((st) => {
+        const meta = metaMap.get(st.student_number);
+        let fullName = st.full_name;
+
+        if (!fullName && meta?.full_name) {
+          fullName = meta.full_name;
+        }
+        if (!fullName && typeof st.enrollment_status === 'string' && st.enrollment_status.includes(' - ')) {
+          fullName = st.enrollment_status.split(' - ')[1]?.trim();
+        }
+        if (!fullName) {
+          const localFound = localStudents.find((ls) => ls.student_number === st.student_number);
+          if (localFound?.profile?.full_name) {
+            fullName = localFound.profile.full_name;
+          }
+        }
+        if (!fullName) {
+          fullName = `Siswa NIS ${st.student_number}`;
+        }
+
+        const username = st.username || meta?.username || `siswa_${st.student_number}`;
+        const rawStatus = typeof st.enrollment_status === 'string' ? st.enrollment_status : 'aktif';
+        const normalizedStatus = (rawStatus.split(' - ')[0].trim().toLowerCase() || 'aktif') as
+          | 'aktif'
+          | 'mutasi'
+          | 'lulus'
+          | 'nonaktif';
+
+        const item: StudentItem = {
+          id: st.id,
+          profile_id: st.profile_id || st.id,
+          student_number: st.student_number,
+          class_id: st.class_id,
+          gender: st.gender,
+          enrollment_status: normalizedStatus,
+          created_at: st.created_at,
+          class: st.class || undefined,
+          profile: {
+            id: st.profile_id || st.id,
+            full_name: fullName,
+            username,
+            role: 'siswa',
+            avatar_path: null,
+            phone: null,
+            is_active: normalizedStatus === 'aktif',
+          },
+        };
+        map.set(st.student_number, item);
+      });
+
+      // Merge local cache
+      localStudents.forEach((st) => {
+        if (!map.has(st.student_number)) {
+          map.set(st.student_number, st);
+        }
+      });
+
+      combined = Array.from(map.values());
+
+      // Resolve class object if missing from cache
+      const classes = await this.getClasses();
+      const classMap = new Map(classes.map((c) => [c.id, c]));
+
+      combined = combined.map((st) => {
+        if (!st.class && st.class_id && classMap.has(st.class_id)) {
+          const cls = classMap.get(st.class_id)!;
+          return {
+            ...st,
+            class: cls,
+          };
+        }
+        return st;
+      });
+
+      setCached('students_all', combined);
     }
 
-    const localStudents = this.getLocalStudents();
-    const map = new Map<string, StudentItem>();
-
-    // Process Supabase records
-    dbStudents.forEach((st) => {
-      const meta = metaMap.get(st.student_number);
-      let fullName = st.full_name;
-
-      if (!fullName && meta?.full_name) {
-        fullName = meta.full_name;
-      }
-      if (!fullName && typeof st.enrollment_status === 'string' && st.enrollment_status.includes(' - ')) {
-        fullName = st.enrollment_status.split(' - ')[1]?.trim();
-      }
-      if (!fullName) {
-        const localFound = localStudents.find((ls) => ls.student_number === st.student_number);
-        if (localFound?.profile?.full_name) {
-          fullName = localFound.profile.full_name;
-        }
-      }
-      if (!fullName) {
-        fullName = `Siswa NIS ${st.student_number}`;
-      }
-
-      const username = st.username || meta?.username || `siswa_${st.student_number}`;
-      const rawStatus = typeof st.enrollment_status === 'string' ? st.enrollment_status : 'aktif';
-      const normalizedStatus = (rawStatus.split(' - ')[0].trim().toLowerCase() || 'aktif') as
-        | 'aktif'
-        | 'mutasi'
-        | 'lulus'
-        | 'nonaktif';
-
-      const item: StudentItem = {
-        id: st.id,
-        profile_id: st.profile_id || st.id,
-        student_number: st.student_number,
-        class_id: st.class_id,
-        gender: st.gender,
-        enrollment_status: normalizedStatus,
-        created_at: st.created_at,
-        class: st.class || undefined,
-        profile: {
-          id: st.profile_id || st.id,
-          full_name: fullName,
-          username,
-          role: 'siswa',
-          avatar_path: null,
-          phone: null,
-          is_active: normalizedStatus === 'aktif',
-        },
-      };
-      map.set(st.student_number, item);
-    });
-
-    // Merge any local cache
-    localStudents.forEach((st) => {
-      if (!map.has(st.student_number)) {
-        map.set(st.student_number, st);
-      }
-    });
-
-    let combined = Array.from(map.values());
-
-    // Resolve class object if missing
-    const classes = await this.getClasses();
-    const classMap = new Map(classes.map((c) => [c.id, c]));
-
-    combined = combined.map((st) => {
-      if (!st.class && st.class_id && classMap.has(st.class_id)) {
-        const cls = classMap.get(st.class_id)!;
-        return {
-          ...st,
-          class: cls,
-        };
-      }
-      return st;
-    });
-
+    let filtered = combined;
     if (classId) {
-      combined = combined.filter((st) => st.class_id === classId);
+      filtered = filtered.filter((st) => st.class_id === classId);
     }
 
     if (search) {
       const s = search.toLowerCase();
-      combined = combined.filter(
+      filtered = filtered.filter(
         (st) =>
           st.student_number?.toLowerCase().includes(s) ||
           st.profile?.full_name?.toLowerCase().includes(s) ||
@@ -393,7 +519,7 @@ export const dataService = {
       );
     }
 
-    return combined;
+    return filtered;
   },
 
   async getStudentByProfileId(profileId: string): Promise<StudentItem | null> {
@@ -512,10 +638,14 @@ export const dataService = {
         localStorage.setItem('pai_custom_students', JSON.stringify(students));
       }
     }
+    clearCache('students_all');
+    clearCache('classes');
     return updates;
   },
 
   async deleteStudent(id: string) {
+    clearCache('students_all');
+    clearCache('classes');
     try {
       const { data: st } = await supabase
         .from('students')
@@ -544,59 +674,93 @@ export const dataService = {
 
   // ================= TEACHING DOCUMENTS (PERANGKAT AJAR) =================
   async getTeachingDocuments(category?: string, gradeLevel?: number): Promise<TeachingDocument[]> {
-    let query = supabase.from('teaching_documents').select('*');
-    if (category) query = query.eq('category', category);
-    if (gradeLevel) query = query.eq('grade_level', gradeLevel);
+    const cacheKey = `teaching_docs_${category || 'all'}_${gradeLevel || 'all'}`;
+    const cached = getCached<TeachingDocument[]>(cacheKey);
+    if (cached) return cached;
 
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) {
-      console.warn('Could not fetch teaching documents:', error.message);
-      return [];
-    }
-    return (data || []) as TeachingDocument[];
+    const fetchPromise = (async () => {
+      try {
+        let query = supabase.from('teaching_documents').select('*');
+        if (category) query = query.eq('category', category);
+        if (gradeLevel) query = query.eq('grade_level', gradeLevel);
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) {
+          console.warn('Could not fetch teaching documents:', error.message);
+          return [];
+        }
+        return (data || []) as TeachingDocument[];
+      } catch (err: any) {
+        console.warn('Fetch teaching documents timeout/error:', err?.message);
+        return [];
+      }
+    })();
+
+    const result = await withTimeout(fetchPromise, 2500, []);
+    setCached(cacheKey, result);
+    return result;
   },
 
   async createTeachingDocument(item: Omit<TeachingDocument, 'id' | 'created_at' | 'updated_at'>) {
+    clearCache('teaching_docs');
     const { data, error } = await supabase.from('teaching_documents').insert(item).select().single();
     if (error) throw error;
     return data as TeachingDocument;
   },
 
   async deleteTeachingDocument(id: string) {
+    clearCache('teaching_docs');
     const { error } = await supabase.from('teaching_documents').delete().eq('id', id);
     if (error) throw error;
   },
 
   // ================= TEACHING MATERIALS (BAHAN AJAR & VIDEO) =================
   async getTeachingMaterials(gradeLevel?: number, classId?: string, onlyPublished = false): Promise<TeachingMaterial[]> {
-    let query = supabase.from('teaching_materials').select(`
-      *,
-      class:classes(id, class_name, grade_level)
-    `);
+    const cacheKey = `materials_${gradeLevel || 'all'}_${classId || 'all'}_${onlyPublished}`;
+    const cached = getCached<TeachingMaterial[]>(cacheKey);
+    if (cached) return cached;
 
-    if (gradeLevel) query = query.eq('grade_level', gradeLevel);
-    if (classId) {
-      query = query.or(`class_id.eq.${classId},class_id.is.null`);
-    }
-    if (onlyPublished) {
-      query = query.eq('publication_status', 'published');
-    }
+    const fetchPromise = (async () => {
+      try {
+        let query = supabase.from('teaching_materials').select(`
+          *,
+          class:classes(id, class_name, grade_level)
+        `);
 
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) {
-      console.warn('Could not fetch teaching materials:', error.message);
-      return [];
-    }
-    return (data || []) as TeachingMaterial[];
+        if (gradeLevel) query = query.eq('grade_level', gradeLevel);
+        if (classId) {
+          query = query.or(`class_id.eq.${classId},class_id.is.null`);
+        }
+        if (onlyPublished) {
+          query = query.eq('publication_status', 'published');
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) {
+          console.warn('Could not fetch teaching materials:', error.message);
+          return [];
+        }
+        return (data || []) as TeachingMaterial[];
+      } catch (err: any) {
+        console.warn('Fetch teaching materials timeout/error:', err?.message);
+        return [];
+      }
+    })();
+
+    const result = await withTimeout(fetchPromise, 2500, []);
+    setCached(cacheKey, result);
+    return result;
   },
 
   async createTeachingMaterial(item: Partial<TeachingMaterial>) {
+    clearCache('materials');
     const { data, error } = await supabase.from('teaching_materials').insert(item).select().single();
     if (error) throw error;
     return data as TeachingMaterial;
   },
 
   async updateTeachingMaterial(id: string, updates: Partial<TeachingMaterial>) {
+    clearCache('materials');
     const { data, error } = await supabase
       .from('teaching_materials')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -608,104 +772,684 @@ export const dataService = {
   },
 
   async deleteTeachingMaterial(id: string) {
+    clearCache('materials');
     const { error } = await supabase.from('teaching_materials').delete().eq('id', id);
     if (error) throw error;
   },
 
   // ================= JURNAL GURU =================
-  async getJournals(classId?: string, startDate?: string, endDate?: string): Promise<TeachingJournal[]> {
-    let query = supabase.from('teaching_journals').select(`
-      *,
-      class:classes(id, class_name, grade_level),
-      teacher:profiles(id, full_name)
-    `);
-
-    if (classId) query = query.eq('class_id', classId);
-    if (startDate) query = query.gte('journal_date', startDate);
-    if (endDate) query = query.lte('journal_date', endDate);
-
-    const { data, error } = await query.order('journal_date', { ascending: false });
-    if (error) {
-      console.warn('Could not fetch journals:', error.message);
-      return [];
+  getLocalJournals(): TeachingJournal[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem('pai_custom_journals');
+      if (stored) return JSON.parse(stored);
+    } catch {
+      // Ignore
     }
-    return (data || []) as TeachingJournal[];
+    return [];
+  },
+
+  saveLocalJournal(item: TeachingJournal) {
+    if (typeof window === 'undefined') return;
+    const list = this.getLocalJournals();
+    const idx = list.findIndex((j) => j.id === item.id);
+    if (idx >= 0) {
+      list[idx] = item;
+    } else {
+      list.unshift(item);
+    }
+    localStorage.setItem('pai_custom_journals', JSON.stringify(list));
+  },
+
+  deleteLocalJournal(id: string) {
+    if (typeof window === 'undefined') return;
+    const list = this.getLocalJournals().filter((j) => j.id !== id);
+    localStorage.setItem('pai_custom_journals', JSON.stringify(list));
+  },
+
+  _parseJournal(jrn: any): TeachingJournal {
+    let teaching_hour = jrn.teaching_hour || '';
+    let attendance_s = jrn.attendance_s ?? 0;
+    let attendance_i = jrn.attendance_i ?? 0;
+    let attendance_a = jrn.attendance_a ?? 0;
+    let notes = jrn.notes || '';
+    let reflection = jrn.reflection || '';
+
+    // If metadata encoded in reflection
+    if (reflection && reflection.includes('[JRN_META:')) {
+      const match = reflection.match(/\[JRN_META:(\{.*?\})\]/);
+      if (match) {
+        try {
+          const meta = JSON.parse(match[1]);
+          if (!teaching_hour && meta.jam) teaching_hour = meta.jam;
+          if (attendance_s === undefined || attendance_s === 0) attendance_s = meta.s ?? 0;
+          if (attendance_i === undefined || attendance_i === 0) attendance_i = meta.i ?? 0;
+          if (attendance_a === undefined || attendance_a === 0) attendance_a = meta.a ?? 0;
+          if (!notes && meta.ket) notes = meta.ket;
+          reflection = reflection.replace(/\[JRN_META:(\{.*?\})\]/, '').trim();
+        } catch {
+          // Ignore
+        }
+      }
+    }
+
+    if (!teaching_hour) teaching_hour = 'Jam 1 - 2 (07.30 - 08.50)';
+    if (!notes) {
+      notes = [reflection, jrn.obstacles, jrn.follow_up].filter(Boolean).join(' | ') || 'KBM terlaksana dengan baik dan tertib';
+    }
+
+    return {
+      ...jrn,
+      teaching_hour,
+      attendance_s,
+      attendance_i,
+      attendance_a,
+      notes,
+      reflection,
+    };
+  },
+
+  async getJournals(classId?: string, startDate?: string, endDate?: string): Promise<TeachingJournal[]> {
+    const cacheKey = `journals_${classId || 'all'}_${startDate || 'all'}_${endDate || 'all'}`;
+    const cached = getCached<TeachingJournal[]>(cacheKey);
+    if (cached) return cached;
+
+    const fetchPromise = (async () => {
+      let dbJournals: TeachingJournal[] = [];
+      try {
+        let query = supabase.from('teaching_journals').select(`
+          *,
+          class:classes(id, class_name, grade_level),
+          teacher:profiles(id, full_name)
+        `);
+
+        if (classId) query = query.eq('class_id', classId);
+        if (startDate) query = query.gte('journal_date', startDate);
+        if (endDate) query = query.lte('journal_date', endDate);
+
+        const { data, error } = await query.order('journal_date', { ascending: false });
+        if (!error && data) {
+          dbJournals = data.map((item: any) => this._parseJournal(item));
+        }
+      } catch (e: any) {
+        console.warn('Could not fetch journals from Supabase:', e.message);
+      }
+
+      // Combine with local journals
+      const localJournals = this.getLocalJournals().map((item: any) => this._parseJournal(item));
+      let combined = [...dbJournals];
+      localJournals.forEach((lj) => {
+        if (!combined.some((cj) => cj.id === lj.id)) {
+          if (!classId || lj.class_id === classId) {
+            combined.push(lj);
+          }
+        }
+      });
+
+      // If completely empty, generate sample agenda entries for realistic preview
+      if (combined.length === 0) {
+        const classes = this.getLocalClasses();
+        const c1 = classes[0]?.id || 'cls-7a';
+        const c2 = classes[1]?.id || classes[0]?.id || 'cls-7b';
+        const sampleJournals: TeachingJournal[] = [
+          {
+            id: 'sample-jrn-1',
+            teacher_id: 'sample-teacher',
+            class_id: c1,
+            journal_date: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
+            teaching_hour: 'Jam ke 1 - 2 (07.30 - 08.50)',
+            topic: 'Bab 1: Menghadirkan Salat dan Zikir dalam Kehidupan',
+            learning_objectives: 'Peserta didik mampu memahami hakikat salat dan zikir untuk ketenteraman jiwa.',
+            methods: 'Diskusi Kelompok, Ceramah Interaktif, Tanya Jawab',
+            activities: '1. Pembukaan: Tadarus Al-Qur’an QS An-Nisa: 103.\n2. Inti: Analisis dampak zikir terhadap ketenangan hati & diskusi kelompok.\n3. Penutup: Pengambilan kesimpulan bersama & refleksi.',
+            attendance_s: 1,
+            attendance_i: 0,
+            attendance_a: 0,
+            notes: 'KBM berjalan lancar dan tuntas. 1 siswa sakit (surat terlampir).',
+            class: classes[0] || { id: c1, class_name: 'VII A', grade_level: 7, academic_year: '2025/2026' },
+          },
+          {
+            id: 'sample-jrn-2',
+            teacher_id: 'sample-teacher',
+            class_id: c2,
+            journal_date: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+            teaching_hour: 'Jam ke 3 - 4 (09.05 - 10.25)',
+            topic: 'Bab 2: Meneladani Nama dan Sifat Allah untuk Kebaikan Hidup',
+            learning_objectives: 'Peserta didik mampu mengamalkan makna Asmaul Husna Al-Alim, Al-Khabir, As-Sami, Al-Bashir.',
+            methods: 'Problem Based Learning, Diskusi, Analisis Kasus',
+            activities: '1. Pembukaan: Membaca Asmaul Husna bersama.\n2. Inti: Diskusi kelompok menghubungkan sifat Al-Alim dan kejujuran saat ujian.\n3. Penutup: Evaluasi pemahaman mandiri dan tindak lanjut.',
+            attendance_s: 0,
+            attendance_i: 1,
+            attendance_a: 0,
+            notes: 'Peserta didik sangat antusias. 1 siswa izin menghadiri acara keluarga.',
+            class: classes[1] || { id: c2, class_name: 'VII B', grade_level: 7, academic_year: '2025/2026' },
+          },
+          {
+            id: 'sample-jrn-3',
+            teacher_id: 'sample-teacher',
+            class_id: c1,
+            journal_date: new Date().toISOString().slice(0, 10),
+            teaching_hour: 'Jam ke 5 - 6 (10.40 - 12.00)',
+            topic: 'Praktik Bersuci: Tata Cara Tayammum dan Wudhu Sesuai Sunnah',
+            learning_objectives: 'Peserta didik mampu mempraktikkan rukun dan syarat tayammum secara tartil.',
+            methods: 'Demonstrasi Langsung, Praktik Berkelompok',
+            activities: '1. Pembukaan: Doa bersama dan apersepsi sebab-sebab diperbolehkannya tayammum.\n2. Inti: Demonstrasi tayammum di musala sekolah dan praktik bergantian antarkelompok.\n3. Penutup: Koreksi gerakan dan penilaian performa siswa.',
+            attendance_s: 0,
+            attendance_i: 0,
+            attendance_a: 0,
+            notes: 'Semua siswa hadir 100%. Target keterampilan wudhu dan tayammum tercapai.',
+            class: classes[0] || { id: c1, class_name: 'VII A', grade_level: 7, academic_year: '2025/2026' },
+          },
+        ];
+        return sampleJournals;
+      }
+
+      return combined.sort((a, b) => (b.journal_date > a.journal_date ? 1 : -1));
+    })();
+
+    const result = await withTimeout(fetchPromise, 2500, []);
+    setCached(cacheKey, result);
+    return result;
   },
 
   async createJournal(item: Partial<TeachingJournal>) {
-    const { data, error } = await supabase.from('teaching_journals').insert(item).select().single();
-    if (error) throw error;
-    return data as TeachingJournal;
+    clearCache('journals');
+    const metaTag = `\n[JRN_META:${JSON.stringify({
+      jam: item.teaching_hour || '',
+      s: item.attendance_s ?? 0,
+      i: item.attendance_i ?? 0,
+      a: item.attendance_a ?? 0,
+      ket: item.notes || '',
+    })}]`;
+
+    const packedReflection = ((item.reflection || '') + metaTag).trim();
+
+    // 1. Try directly inserting with all fields
+    try {
+      const { data, error } = await supabase.from('teaching_journals').insert(item).select(`
+        *,
+        class:classes(id, class_name, grade_level),
+        teacher:profiles(id, full_name)
+      `).single();
+      if (!error && data) {
+        const parsed = this._parseJournal(data);
+        this.saveLocalJournal(parsed);
+        return parsed;
+      }
+    } catch {
+      // Continue to sanitized attempt
+    }
+
+    // 2. Try sanitized base fields with metadata in reflection
+    try {
+      const sanitized = {
+        teacher_id: item.teacher_id,
+        class_id: item.class_id,
+        journal_date: item.journal_date,
+        topic: item.topic,
+        learning_objectives: item.learning_objectives || item.topic,
+        methods: item.methods || '',
+        activities: item.activities,
+        reflection: packedReflection,
+        obstacles: item.obstacles || '',
+        follow_up: item.follow_up || '',
+      };
+
+      const { data, error } = await supabase.from('teaching_journals').insert(sanitized).select(`
+        *,
+        class:classes(id, class_name, grade_level),
+        teacher:profiles(id, full_name)
+      `).single();
+
+      if (!error && data) {
+        const parsed = this._parseJournal(data);
+        this.saveLocalJournal(parsed);
+        return parsed;
+      }
+    } catch (e: any) {
+      console.warn('Supabase createJournal fallback:', e?.message);
+    }
+
+    // 3. Local storage fallback
+    const newJournal: TeachingJournal = {
+      id: `jrn-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      teacher_id: item.teacher_id || 'guru-1',
+      class_id: item.class_id || '',
+      journal_date: item.journal_date || new Date().toISOString().slice(0, 10),
+      teaching_hour: item.teaching_hour || 'Jam 1 - 2 (07.30 - 08.50)',
+      topic: item.topic || '',
+      learning_objectives: item.learning_objectives || '',
+      methods: item.methods || '',
+      activities: item.activities || '',
+      attendance_s: item.attendance_s ?? 0,
+      attendance_i: item.attendance_i ?? 0,
+      attendance_a: item.attendance_a ?? 0,
+      notes: item.notes || '',
+      reflection: item.reflection || '',
+      obstacles: item.obstacles || '',
+      follow_up: item.follow_up || '',
+      created_at: new Date().toISOString(),
+    };
+    this.saveLocalJournal(newJournal);
+    return newJournal;
   },
 
   async updateJournal(id: string, updates: Partial<TeachingJournal>) {
-    const { data, error } = await supabase.from('teaching_journals').update(updates).eq('id', id).select().single();
-    if (error) throw error;
-    return data as TeachingJournal;
+    clearCache('journals');
+    const metaTag = `\n[JRN_META:${JSON.stringify({
+      jam: updates.teaching_hour || '',
+      s: updates.attendance_s ?? 0,
+      i: updates.attendance_i ?? 0,
+      a: updates.attendance_a ?? 0,
+      ket: updates.notes || '',
+    })}]`;
+
+    const packedReflection = ((updates.reflection || '') + metaTag).trim();
+
+    try {
+      const { data, error } = await supabase.from('teaching_journals').update(updates).eq('id', id).select(`
+        *,
+        class:classes(id, class_name, grade_level),
+        teacher:profiles(id, full_name)
+      `).single();
+      if (!error && data) {
+        const parsed = this._parseJournal(data);
+        this.saveLocalJournal(parsed);
+        return parsed;
+      }
+    } catch {
+      // Continue
+    }
+
+    try {
+      const sanitized: any = { ...updates };
+      delete sanitized.teaching_hour;
+      delete sanitized.attendance_s;
+      delete sanitized.attendance_i;
+      delete sanitized.attendance_a;
+      delete sanitized.notes;
+      delete sanitized.class;
+      delete sanitized.teacher;
+      sanitized.reflection = packedReflection;
+
+      const { data, error } = await supabase.from('teaching_journals').update(sanitized).eq('id', id).select(`
+        *,
+        class:classes(id, class_name, grade_level),
+        teacher:profiles(id, full_name)
+      `).single();
+
+      if (!error && data) {
+        const parsed = this._parseJournal(data);
+        this.saveLocalJournal(parsed);
+        return parsed;
+      }
+    } catch (e: any) {
+      console.warn('Supabase updateJournal fallback:', e?.message);
+    }
+
+    // Local update
+    const list = this.getLocalJournals();
+    const idx = list.findIndex((j) => j.id === id);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...updates };
+      localStorage.setItem('pai_custom_journals', JSON.stringify(list));
+      return list[idx];
+    }
+    return { id, ...updates } as TeachingJournal;
   },
 
   async deleteJournal(id: string) {
-    const { error } = await supabase.from('teaching_journals').delete().eq('id', id);
-    if (error) throw error;
+    clearCache('journals');
+    try {
+      await supabase.from('teaching_journals').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Supabase deleteJournal fallback:', e);
+    }
+    this.deleteLocalJournal(id);
   },
 
   // ================= JURNAL SIKAP =================
+  getLocalAttitudeRecords(): AttitudeRecord[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem('pai_custom_attitude_records');
+      if (stored) return JSON.parse(stored);
+    } catch {
+      // Ignore
+    }
+    return [];
+  },
+
+  saveLocalAttitudeRecord(item: AttitudeRecord) {
+    if (typeof window === 'undefined') return;
+    const list = this.getLocalAttitudeRecords();
+    const idx = list.findIndex((r) => r.id === item.id);
+    if (idx >= 0) {
+      list[idx] = item;
+    } else {
+      list.unshift(item);
+    }
+    localStorage.setItem('pai_custom_attitude_records', JSON.stringify(list));
+  },
+
+  deleteLocalAttitudeRecord(id: string) {
+    if (typeof window === 'undefined') return;
+    const list = this.getLocalAttitudeRecords().filter((r) => r.id !== id);
+    localStorage.setItem('pai_custom_attitude_records', JSON.stringify(list));
+  },
+
   async getAttitudeRecords(studentId?: string, classId?: string): Promise<AttitudeRecord[]> {
-    let query = supabase.from('attitude_records').select(`
-      *,
-      student:students(
-        id, student_number, class_id,
-        profile:profiles(id, full_name),
-        class:classes(id, class_name)
-      ),
-      teacher:profiles(id, full_name)
-    `);
+    const cacheKey = `attitude_${studentId || 'all'}_${classId || 'all'}`;
+    const cached = getCached<AttitudeRecord[]>(cacheKey);
+    if (cached) return cached;
 
-    if (studentId) query = query.eq('student_id', studentId);
+    const fetchPromise = (async () => {
+      let dbRecords: AttitudeRecord[] = [];
+      try {
+        let query = supabase.from('attitude_records').select(`
+          *,
+          student:students(
+            id, student_number, class_id,
+            profile:profiles(id, full_name),
+            class:classes(id, class_name, grade_level)
+          ),
+          teacher:profiles(id, full_name)
+        `);
 
-    const { data, error } = await query.order('record_date', { ascending: false });
-    if (error) {
-      console.warn('Could not fetch attitude records:', error.message);
-      return [];
-    }
+        if (studentId) query = query.eq('student_id', studentId);
 
-    let results = (data || []) as AttitudeRecord[];
-    if (classId) {
-      results = results.filter((r) => r.student?.class_id === classId);
-    }
-    return results;
+        const { data, error } = await query.order('record_date', { ascending: false });
+        if (!error && data) {
+          dbRecords = data as AttitudeRecord[];
+        }
+      } catch {
+        // Non-blocking
+      }
+
+      // Merge with local records
+      const localRecords = this.getLocalAttitudeRecords();
+      let combined = [...dbRecords];
+      localRecords.forEach((lr) => {
+        if (!combined.some((cr) => cr.id === lr.id)) {
+          combined.push(lr);
+        }
+      });
+
+      // Filter by student / class if provided
+      let filtered = combined;
+      if (studentId) {
+        filtered = filtered.filter((r) => r.student_id === studentId || r.student?.id === studentId);
+      }
+      if (classId) {
+        filtered = filtered.filter((r) => r.student?.class_id === classId);
+      }
+
+      // If completely empty, generate realistic sample records for UPT SMPN 2 Rebang Tangkas
+      if (filtered.length === 0 && !studentId) {
+        const students = this.getLocalStudents();
+        const classes = this.getLocalClasses();
+        const s1 = students[0] || {
+          id: 'std-sample-1',
+          student_number: '202407001',
+          class_id: classes[0]?.id || 'cls-7a',
+          profile: { id: 'p1', full_name: 'Ahmad Fauzi Ramadhan', username: 'ahmad_fauzi' },
+          class: classes[0] || { id: 'cls-7a', class_name: 'VII A', grade_level: 7 },
+        };
+        const s2 = students[1] || {
+          id: 'std-sample-2',
+          student_number: '202407002',
+          class_id: classes[1]?.id || classes[0]?.id || 'cls-7b',
+          profile: { id: 'p2', full_name: 'Nur Aisyah Azzahra', username: 'aisyah_azzahra' },
+          class: classes[1] || classes[0] || { id: 'cls-7b', class_name: 'VII B', grade_level: 7 },
+        };
+        const s3 = students[2] || {
+          id: 'std-sample-3',
+          student_number: '202407003',
+          class_id: classes[0]?.id || 'cls-7a',
+          profile: { id: 'p3', full_name: 'Muhammad Rizki Pratama', username: 'rizki_pratama' },
+          class: classes[0] || { id: 'cls-7a', class_name: 'VII A', grade_level: 7 },
+        };
+
+        const sampleRecords: AttitudeRecord[] = [
+          {
+            id: 'sample-att-1',
+            student_id: s1.id,
+            teacher_id: 'sample-teacher',
+            record_date: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
+            category: 'Spiritual',
+            description: 'Secara sukarela mengumandangkan adzan Dhuhur tepat waktu di musala sekolah dan memimpin kerapihan shaf jamaah.',
+            coaching_notes: 'Beriman, Bertakwa kepada Tuhan YME dan Berakhlak Mulia',
+            follow_up: 'Diberikan apresiasi di depan kelas dan ditunjuk sebagai koordinator tadarus.',
+            student: s1 as any,
+          },
+          {
+            id: 'sample-att-2',
+            student_id: s2.id,
+            teacher_id: 'sample-teacher',
+            record_date: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+            category: 'Kejujuran',
+            description: 'Menemukan uang tunai di musala sekolah dan langsung menyerahkannya kepada guru piket untuk diumumkan kepada pemiliknya.',
+            coaching_notes: 'Kejujuran dan Integritas Diri',
+            follow_up: 'Diberikan penghargaan bintang kejujuran sekolah pada apel pagi.',
+            student: s2 as any,
+          },
+          {
+            id: 'sample-att-3',
+            student_id: s3.id,
+            teacher_id: 'sample-teacher',
+            record_date: new Date().toISOString().slice(0, 10),
+            category: 'Sosial',
+            description: 'Membantu teman sekelas yang kesulitan membaca huruf hijaiyah bertajwid dengan sabar saat jam tadarus pagi.',
+            coaching_notes: 'Gotong Royong & Kepedulian Sesama (Tolong Menolong)',
+            follow_up: 'Diapresiasi dan dijadikan tutor sebaya baca Al-Qur’an di kelas.',
+            student: s3 as any,
+          },
+        ];
+
+        return sampleRecords.filter((r) => !classId || r.student?.class_id === classId);
+      }
+
+      return filtered.sort((a, b) => (b.record_date > a.record_date ? 1 : -1));
+    })();
+
+    const result = await withTimeout(fetchPromise, 2500, []);
+    setCached(cacheKey, result);
+    return result;
   },
 
   async createAttitudeRecord(item: Partial<AttitudeRecord>) {
-    const { data, error } = await supabase.from('attitude_records').insert(item).select().single();
-    if (error) throw error;
-    return data as AttitudeRecord;
+    clearCache('attitude');
+
+    // 1. Try Supabase
+    try {
+      const { data, error } = await supabase.from('attitude_records').insert(item).select(`
+        *,
+        student:students(
+          id, student_number, class_id,
+          profile:profiles(id, full_name),
+          class:classes(id, class_name)
+        ),
+        teacher:profiles(id, full_name)
+      `).single();
+      if (!error && data) {
+        this.saveLocalAttitudeRecord(data as AttitudeRecord);
+        return data as AttitudeRecord;
+      }
+    } catch {
+      // Fallback
+    }
+
+    // 2. Local fallback
+    const newRecord: AttitudeRecord = {
+      id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      student_id: item.student_id || '',
+      teacher_id: item.teacher_id || 'guru-1',
+      record_date: item.record_date || new Date().toISOString().slice(0, 10),
+      category: item.category || 'Spiritual',
+      description: item.description || '',
+      coaching_notes: item.coaching_notes || '',
+      follow_up: item.follow_up || '',
+      created_at: new Date().toISOString(),
+      student: item.student,
+    };
+    this.saveLocalAttitudeRecord(newRecord);
+    return newRecord;
+  },
+
+  async updateAttitudeRecord(id: string, updates: Partial<AttitudeRecord>) {
+    clearCache('attitude');
+    try {
+      const { data, error } = await supabase.from('attitude_records').update(updates).eq('id', id).select(`
+        *,
+        student:students(
+          id, student_number, class_id,
+          profile:profiles(id, full_name),
+          class:classes(id, class_name)
+        ),
+        teacher:profiles(id, full_name)
+      `).single();
+      if (!error && data) {
+        this.saveLocalAttitudeRecord(data as AttitudeRecord);
+        return data as AttitudeRecord;
+      }
+    } catch {
+      // Fallback
+    }
+
+    const list = this.getLocalAttitudeRecords();
+    const idx = list.findIndex((r) => r.id === id);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...updates };
+      localStorage.setItem('pai_custom_attitude_records', JSON.stringify(list));
+      return list[idx];
+    }
+    return { id, ...updates } as AttitudeRecord;
   },
 
   async deleteAttitudeRecord(id: string) {
-    const { error } = await supabase.from('attitude_records').delete().eq('id', id);
-    if (error) throw error;
+    clearCache('attitude');
+    try {
+      await supabase.from('attitude_records').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Supabase deleteAttitudeRecord fallback:', e);
+    }
+    this.deleteLocalAttitudeRecord(id);
   },
 
   // ================= ATTENDANCE RECORDS =================
-  async getAttendance(classId: string, date: string): Promise<AttendanceRecord[]> {
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select(`
-        *,
-        student:students(
-          id, student_number, gender,
-          profile:profiles(id, full_name)
-        )
-      `)
-      .eq('class_id', classId)
-      .eq('attendance_date', date);
-
-    if (error) {
-      console.warn('Could not fetch attendance:', error.message);
+  getLocalAttendanceRecords(): AttendanceRecord[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem('pai_custom_attendance_records');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
       return [];
     }
-    return (data || []) as AttendanceRecord[];
+  },
+
+  saveLocalAttendanceBatch(
+    records: Array<{
+      student_id: string;
+      class_id: string;
+      attendance_date: string;
+      status: string;
+      notes?: string;
+      recorded_by?: string;
+    }>
+  ) {
+    if (typeof window === 'undefined') return;
+    try {
+      const existing = this.getLocalAttendanceRecords();
+      const map = new Map<string, AttendanceRecord>();
+      existing.forEach((r) => {
+        map.set(`${r.student_id}_${r.attendance_date}`, r);
+      });
+
+      records.forEach((rec) => {
+        const key = `${rec.student_id}_${rec.attendance_date}`;
+        map.set(key, {
+          id: map.get(key)?.id || `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          student_id: rec.student_id,
+          class_id: rec.class_id,
+          attendance_date: rec.attendance_date,
+          status: rec.status as any,
+          notes: rec.notes || undefined,
+          recorded_by: rec.recorded_by || undefined,
+          created_at: map.get(key)?.created_at || new Date().toISOString(),
+        });
+      });
+
+      localStorage.setItem('pai_custom_attendance_records', JSON.stringify(Array.from(map.values())));
+    } catch (e) {
+      console.warn('Error saving local attendance batch:', e);
+    }
+  },
+
+  async getAttendance(classId: string, date: string): Promise<AttendanceRecord[]> {
+    let remoteRecords: AttendanceRecord[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select(`
+          *,
+          student:students(
+            id, student_number, gender,
+            profile:profiles(id, full_name)
+          )
+        `)
+        .eq('class_id', classId)
+        .eq('attendance_date', date);
+
+      if (!error && data) {
+        remoteRecords = data as AttendanceRecord[];
+      }
+    } catch (err: any) {
+      console.warn('Could not fetch attendance from Supabase:', err?.message);
+    }
+
+    const local = this.getLocalAttendanceRecords().filter(
+      (l) => l.class_id === classId && l.attendance_date === date
+    );
+
+    const map = new Map<string, AttendanceRecord>();
+    remoteRecords.forEach((r) => map.set(r.student_id, r));
+    local.forEach((l) => map.set(l.student_id, l));
+
+    return Array.from(map.values());
+  },
+
+  async getAttendanceRange(classId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
+    let remoteRecords: AttendanceRecord[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select(`
+          *,
+          student:students(
+            id, student_number, gender,
+            profile:profiles(id, full_name)
+          )
+        `)
+        .eq('class_id', classId)
+        .gte('attendance_date', startDate)
+        .lte('attendance_date', endDate);
+
+      if (!error && data) {
+        remoteRecords = data as AttendanceRecord[];
+      }
+    } catch (err: any) {
+      console.warn('Could not fetch attendance range:', err?.message);
+    }
+
+    const local = this.getLocalAttendanceRecords().filter(
+      (l) => l.class_id === classId && l.attendance_date >= startDate && l.attendance_date <= endDate
+    );
+
+    const map = new Map<string, AttendanceRecord>();
+    remoteRecords.forEach((r) => map.set(`${r.student_id}_${r.attendance_date}`, r));
+    local.forEach((l) => map.set(`${l.student_id}_${l.attendance_date}`, l));
+
+    return Array.from(map.values());
   },
 
   async saveAttendanceBatch(
@@ -718,15 +1462,22 @@ export const dataService = {
       recorded_by?: string;
     }>
   ) {
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .upsert(records, {
-        onConflict: 'student_id,class_id,attendance_date',
-      })
-      .select();
+    this.saveLocalAttendanceBatch(records);
 
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .upsert(records, {
+          onConflict: 'student_id,class_id,attendance_date',
+        })
+        .select();
+
+      if (!error) return data;
+    } catch (e: any) {
+      console.warn('Supabase upsert attendance fallback to local:', e?.message);
+    }
+
+    return records;
   },
 
   async getStudentAttendanceHistory(studentId: string): Promise<AttendanceRecord[]> {
@@ -745,50 +1496,71 @@ export const dataService = {
 
   // ================= ASSIGNMENTS & SUBMISSIONS =================
   async getAssignments(classId?: string, onlyPublished = false): Promise<Assignment[]> {
-    let query = supabase.from('assignments').select(`
-      *,
-      class:classes(id, class_name, grade_level)
-    `);
+    const cacheKey = `assignments_${classId || 'all'}_${onlyPublished}`;
+    const cached = getCached<Assignment[]>(cacheKey);
+    if (cached) return cached;
 
-    if (classId) query = query.eq('class_id', classId);
-    if (onlyPublished) query = query.eq('publication_status', 'published');
+    const fetchPromise = (async () => {
+      try {
+        let query = supabase.from('assignments').select(`
+          *,
+          class:classes(id, class_name, grade_level)
+        `);
 
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) {
-      console.warn('Could not fetch assignments:', error.message);
-      return [];
-    }
+        if (classId) query = query.eq('class_id', classId);
+        if (onlyPublished) query = query.eq('publication_status', 'published');
 
-    const assignments = data || [];
-    const withCounts = await Promise.all(
-      assignments.map(async (ass: any) => {
-        const { count } = await supabase
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error || !data) return [];
+
+        const assignments = data;
+        if (assignments.length === 0) return [];
+
+        // Batch count submissions in a single query
+        const assignmentIds = assignments.map((a: any) => a.id);
+        const { data: subData } = await supabase
           .from('submissions')
-          .select('id', { count: 'exact', head: true })
-          .eq('assignment_id', ass.id);
-        return {
-          ...ass,
-          submissions_count: count || 0,
-        };
-      })
-    );
+          .select('assignment_id')
+          .in('assignment_id', assignmentIds);
 
-    return withCounts as Assignment[];
+        const countMap = new Map<string, number>();
+        if (subData) {
+          subData.forEach((s: any) => {
+            countMap.set(s.assignment_id, (countMap.get(s.assignment_id) || 0) + 1);
+          });
+        }
+
+        return assignments.map((ass: any) => ({
+          ...ass,
+          submissions_count: countMap.get(ass.id) || 0,
+        })) as Assignment[];
+      } catch (err: any) {
+        console.warn('Could not fetch assignments:', err?.message);
+        return [];
+      }
+    })();
+
+    const result = await withTimeout(fetchPromise, 2500, []);
+    setCached(cacheKey, result);
+    return result;
   },
 
   async createAssignment(item: Partial<Assignment>) {
+    clearCache('assignments');
     const { data, error } = await supabase.from('assignments').insert(item).select().single();
     if (error) throw error;
     return data as Assignment;
   },
 
   async updateAssignment(id: string, updates: Partial<Assignment>) {
+    clearCache('assignments');
     const { data, error } = await supabase.from('assignments').update(updates).eq('id', id).select().single();
     if (error) throw error;
     return data as Assignment;
   },
 
   async deleteAssignment(id: string) {
+    clearCache('assignments');
     const { error } = await supabase.from('assignments').delete().eq('id', id);
     if (error) throw error;
   },
@@ -868,35 +1640,52 @@ export const dataService = {
 
   // ================= QUIZZES & CBT =================
   async getQuizzes(classId?: string, onlyPublished = false): Promise<Quiz[]> {
-    let query = supabase.from('quizzes').select(`
-      *,
-      class:classes(id, class_name, grade_level)
-    `);
+    const cacheKey = `quizzes_${classId || 'all'}_${onlyPublished}`;
+    const cached = getCached<Quiz[]>(cacheKey);
+    if (cached) return cached;
 
-    if (classId) query = query.eq('class_id', classId);
-    if (onlyPublished) query = query.eq('publication_status', 'published');
+    const fetchPromise = (async () => {
+      try {
+        let query = supabase.from('quizzes').select(`
+          *,
+          class:classes(id, class_name, grade_level)
+        `);
 
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) {
-      console.warn('Could not fetch quizzes:', error.message);
-      return [];
-    }
-    return (data || []) as Quiz[];
+        if (classId) query = query.eq('class_id', classId);
+        if (onlyPublished) query = query.eq('publication_status', 'published');
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) {
+          console.warn('Could not fetch quizzes:', error.message);
+          return [];
+        }
+        return (data || []) as Quiz[];
+      } catch {
+        return [];
+      }
+    })();
+
+    const result = await withTimeout(fetchPromise, 2500, []);
+    setCached(cacheKey, result);
+    return result;
   },
 
   async createQuiz(item: Partial<Quiz>) {
+    clearCache('quizzes');
     const { data, error } = await supabase.from('quizzes').insert(item).select().single();
     if (error) throw error;
     return data as Quiz;
   },
 
   async updateQuiz(id: string, updates: Partial<Quiz>) {
+    clearCache('quizzes');
     const { data, error } = await supabase.from('quizzes').update(updates).eq('id', id).select().single();
     if (error) throw error;
     return data as Quiz;
   },
 
   async deleteQuiz(id: string) {
+    clearCache('quizzes');
     const { error } = await supabase.from('quizzes').delete().eq('id', id);
     if (error) throw error;
   },
@@ -1025,30 +1814,46 @@ export const dataService = {
 
   // ================= ANNOUNCEMENTS =================
   async getAnnouncements(classId?: string): Promise<Announcement[]> {
-    let query = supabase.from('announcements').select(`
-      *,
-      author:profiles(id, full_name)
-    `);
+    const cacheKey = `announcements_${classId || 'all'}`;
+    const cached = getCached<Announcement[]>(cacheKey);
+    if (cached) return cached;
 
-    if (classId) {
-      query = query.or(`target_class_id.eq.${classId},target_class_id.is.null`);
-    }
+    const fetchPromise = (async () => {
+      try {
+        let query = supabase.from('announcements').select(`
+          *,
+          author:profiles(id, full_name)
+        `);
 
-    const { data, error } = await query.order('is_important', { ascending: false }).order('created_at', { ascending: false });
-    if (error) {
-      console.warn('Could not fetch announcements:', error.message);
-      return [];
-    }
-    return (data || []) as Announcement[];
+        if (classId) {
+          query = query.or(`target_class_id.eq.${classId},target_class_id.is.null`);
+        }
+
+        const { data, error } = await query.order('is_important', { ascending: false }).order('created_at', { ascending: false });
+        if (error) {
+          console.warn('Could not fetch announcements:', error.message);
+          return [];
+        }
+        return (data || []) as Announcement[];
+      } catch {
+        return [];
+      }
+    })();
+
+    const result = await withTimeout(fetchPromise, 2500, []);
+    setCached(cacheKey, result);
+    return result;
   },
 
   async createAnnouncement(item: Partial<Announcement>) {
+    clearCache('announcements');
     const { data, error } = await supabase.from('announcements').insert(item).select().single();
     if (error) throw error;
     return data as Announcement;
   },
 
   async deleteAnnouncement(id: string) {
+    clearCache('announcements');
     const { error } = await supabase.from('announcements').delete().eq('id', id);
     if (error) throw error;
   },

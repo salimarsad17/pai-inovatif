@@ -25,30 +25,90 @@
   background: #475569;
 }
 
-/* Print utilities */
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 20mm 15mm 20mm 15mm;
-  }
-  body {
-    background: #ffffff !important;
-    color: #000000 !important;
-    font-size: 11pt !important;
-    line-height: 1.5 !important;
-  }
-  header, aside, nav, button, input, textarea, select, .no-print {
+/* Screen mode: hide print-only containers */
+@media screen {
+  .print-document-container,
+  #print-journal-document,
+  #print-attitude-document,
+  #print-attendance-document {
     display: none !important;
   }
+}
+
+/* Print utilities for standard A4 Paper Size */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm 10mm 10mm 10mm;
+  }
+
+  html, body, #root, .min-h-screen, .flex-1, main {
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Explicitly hide screen UI */
+  header, aside, nav, button, input, textarea, select, .no-print, [role="dialog"], .fixed, .screen-only-section, .print\:hidden {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
   main {
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
+    overflow: visible !important;
   }
-  #print-area {
+
+  /* Display print documents cleanly */
+  .print-document-container,
+  #print-area,
+  #print-journal-document,
+  #print-attitude-document,
+  #print-attendance-document {
     display: block !important;
+    visibility: visible !important;
+    position: static !important;
     width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
   }
+
+  .print-document-container *,
+  #print-journal-document *,
+  #print-attitude-document *,
+  #print-attendance-document * {
+    visibility: visible !important;
+    color: #000000 !important;
+  }
+
+  /* Table formatting for A4 paper */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
   .screen-only {
     display: none !important;
   }

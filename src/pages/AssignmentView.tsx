@@ -21,9 +21,9 @@ export const AssignmentView: React.FC = () => {
   const { profile } = useAuth();
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>(() => dataService.getLocalClasses());
   const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Modal: Buat Tugas
   const [showCreateModal, setShowCreateModal] = useState(false);

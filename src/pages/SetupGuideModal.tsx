@@ -303,26 +303,62 @@ ALTER TABLE public.grade_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- POLICIES
+-- POLICIES (Idempotent: DROP POLICY IF EXISTS agar aman dijalankan berulang kali)
+DROP POLICY IF EXISTS "profiles_select" ON public.profiles;
 CREATE POLICY "profiles_select" ON public.profiles FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "profiles_update" ON public.profiles;
 CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "profiles_insert" ON public.profiles;
 CREATE POLICY "profiles_insert" ON public.profiles FOR INSERT TO authenticated WITH CHECK (true);
 
+DROP POLICY IF EXISTS "classes_all" ON public.classes;
 CREATE POLICY "classes_all" ON public.classes FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "students_all" ON public.students;
 CREATE POLICY "students_all" ON public.students FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "materials_all" ON public.teaching_materials;
 CREATE POLICY "materials_all" ON public.teaching_materials FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "journals_all" ON public.teaching_journals;
 CREATE POLICY "journals_all" ON public.teaching_journals FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "attitude_all" ON public.attitude_records;
 CREATE POLICY "attitude_all" ON public.attitude_records FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "attendance_all" ON public.attendance_records;
 CREATE POLICY "attendance_all" ON public.attendance_records FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "assignments_all" ON public.assignments;
 CREATE POLICY "assignments_all" ON public.assignments FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "submissions_all" ON public.submissions;
 CREATE POLICY "submissions_all" ON public.submissions FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "quizzes_all" ON public.quizzes;
 CREATE POLICY "quizzes_all" ON public.quizzes FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "quiz_questions_all" ON public.quiz_questions;
 CREATE POLICY "quiz_questions_all" ON public.quiz_questions FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "quiz_attempts_all" ON public.quiz_attempts;
 CREATE POLICY "quiz_attempts_all" ON public.quiz_attempts FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "grades_all" ON public.grade_records;
 CREATE POLICY "grades_all" ON public.grade_records FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "announcements_all" ON public.announcements;
 CREATE POLICY "announcements_all" ON public.announcements FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "audit_all" ON public.audit_logs;
 CREATE POLICY "audit_all" ON public.audit_logs FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "school_all" ON public.school_settings;
 CREATE POLICY "school_all" ON public.school_settings FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "docs_all" ON public.teaching_documents;
 CREATE POLICY "docs_all" ON public.teaching_documents FOR ALL TO authenticated USING (true);
 
 -- INITIAL SEED
@@ -431,6 +467,19 @@ ON CONFLICT DO NOTHING;
                   {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'Tersalin!' : 'Salin SQL Lengkap'}</span>
                 </button>
+              </div>
+
+              {/* Banner Penjelasan Error 42710 */}
+              <div className="p-3 bg-emerald-950/60 border border-emerald-600/40 rounded-xl flex items-start gap-2.5 text-slate-300">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-white block mb-0.5">
+                    Perbaikan Otomatis Error 42710 (Policy Already Exists):
+                  </span>
+                  <span className="text-[11px] text-emerald-200/90 leading-relaxed block">
+                    Seluruh perintah kebijakan akses (RLS) di bawah telah diperbarui dengan klausa <code className="text-amber-300 font-mono bg-slate-900 px-1 py-0.5 rounded">DROP POLICY IF EXISTS</code>. Anda dapat menyalin dan mengeksekusi kembali skrip ini di SQL Editor Supabase secara aman tanpa error policy ganda.
+                  </span>
+                </div>
               </div>
 
               <div className="relative">

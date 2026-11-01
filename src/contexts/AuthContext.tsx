@@ -22,12 +22,53 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getInitialAuthState = () => {
+  if (typeof window === 'undefined') {
+    return { user: null, profile: null, student: null, settings: null };
+  }
+  try {
+    const teacherRaw = localStorage.getItem('pai_teacher_session');
+    if (teacherRaw) {
+      const parsed = JSON.parse(teacherRaw);
+      if (parsed?.user && parsed?.profile) {
+        return {
+          user: parsed.user,
+          profile: parsed.profile,
+          student: null,
+          settings: JSON.parse(localStorage.getItem('pai_school_settings') || 'null'),
+        };
+      }
+    }
+    const studentRaw = localStorage.getItem('pai_student_session');
+    if (studentRaw) {
+      const parsed = JSON.parse(studentRaw);
+      if (parsed?.user && parsed?.profile) {
+        return {
+          user: parsed.user,
+          profile: parsed.profile,
+          student: parsed.student || null,
+          settings: JSON.parse(localStorage.getItem('pai_school_settings') || 'null'),
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse cached auth state:', e);
+  }
+  return {
+    user: null,
+    profile: null,
+    student: null,
+    settings: JSON.parse(localStorage.getItem('pai_school_settings') || 'null'),
+  };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [student, setStudent] = useState<StudentItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [schoolSettings, setSchoolSettings] = useState<SchoolSettings | null>(null);
+  const [initial] = useState(getInitialAuthState);
+  const [user, setUser] = useState<User | null>(initial.user);
+  const [profile, setProfile] = useState<UserProfile | null>(initial.profile);
+  const [student, setStudent] = useState<StudentItem | null>(initial.student);
+  const [loading, setLoading] = useState(false);
+  const [schoolSettings, setSchoolSettings] = useState<SchoolSettings | null>(initial.settings);
   const isConfigured = isSupabaseConfigured();
 
   const loadSettings = async () => {
@@ -68,9 +109,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function init() {
       try {
-        await loadSettings();
+        // Fast background refresh
+        loadSettings();
         const initialUser = await authService.getCurrentUser();
-        if (mounted) {
+        if (mounted && initialUser) {
           await loadProfile(initialUser);
         }
       } catch (err) {

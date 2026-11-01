@@ -26,6 +26,7 @@ export interface SchoolSettings {
   semester: string;
   motto: string;
   headmaster_name?: string | null;
+  headmaster_nip?: string | null;
   updated_at?: string;
 }
 
@@ -91,10 +92,15 @@ export interface TeachingJournal {
   teacher_id: string;
   class_id: string;
   journal_date: string;
-  topic: string;
-  learning_objectives: string;
-  methods?: string;
-  activities: string;
+  teaching_hour?: string; // Jam (contoh: Jam ke-1 - 2 / 07.30 - 08.50)
+  topic: string; // Materi Pokok
+  learning_objectives?: string; // Tujuan Pembelajaran
+  methods?: string; // Metode
+  activities: string; // Kegiatan KBM
+  attendance_s?: number | string; // Kehadiran S (Sakit)
+  attendance_i?: number | string; // Kehadiran I (Izin)
+  attendance_a?: number | string; // Kehadiran A (Alpa)
+  notes?: string; // Ket (Keterangan)
   reflection?: string;
   obstacles?: string;
   follow_up?: string;

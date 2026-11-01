@@ -334,54 +334,66 @@ RETURNS UUID AS $$
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 -- RLS: profiles
+DROP POLICY IF EXISTS "Public profiles can be viewed by authenticated users" ON public.profiles;
 CREATE POLICY "Public profiles can be viewed by authenticated users"
 ON public.profiles FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
 ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Teachers and admins can insert profiles" ON public.profiles;
 CREATE POLICY "Teachers and admins can insert profiles"
 ON public.profiles FOR INSERT TO authenticated WITH CHECK (
     public.get_current_role() IN ('guru', 'admin') OR auth.uid() = id
 );
 
 -- RLS: school_settings
+DROP POLICY IF EXISTS "Everyone can read school settings" ON public.school_settings;
 CREATE POLICY "Everyone can read school settings"
 ON public.school_settings FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Only teachers/admin can update school settings" ON public.school_settings;
 CREATE POLICY "Only teachers/admin can update school settings"
 ON public.school_settings FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: classes
+DROP POLICY IF EXISTS "Everyone can view classes" ON public.classes;
 CREATE POLICY "Everyone can view classes"
 ON public.classes FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Teachers and admin can manage classes" ON public.classes;
 CREATE POLICY "Teachers and admin can manage classes"
 ON public.classes FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: students
+DROP POLICY IF EXISTS "Everyone authenticated can view student list" ON public.students;
 CREATE POLICY "Everyone authenticated can view student list"
 ON public.students FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Teachers and admin can manage students" ON public.students;
 CREATE POLICY "Teachers and admin can manage students"
 ON public.students FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: teaching_documents
+DROP POLICY IF EXISTS "Everyone can view teaching documents" ON public.teaching_documents;
 CREATE POLICY "Everyone can view teaching documents"
 ON public.teaching_documents FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Teachers can manage teaching documents" ON public.teaching_documents;
 CREATE POLICY "Teachers can manage teaching documents"
 ON public.teaching_documents FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: teaching_materials
+DROP POLICY IF EXISTS "Materials readable by class or grade level" ON public.teaching_materials;
 CREATE POLICY "Materials readable by class or grade level"
 ON public.teaching_materials FOR SELECT TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin') OR
@@ -391,47 +403,55 @@ ON public.teaching_materials FOR SELECT TO authenticated USING (
     )
 );
 
+DROP POLICY IF EXISTS "Teachers can manage teaching materials" ON public.teaching_materials;
 CREATE POLICY "Teachers can manage teaching materials"
 ON public.teaching_materials FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: teaching_journals
+DROP POLICY IF EXISTS "Teachers can manage their journals" ON public.teaching_journals;
 CREATE POLICY "Teachers can manage their journals"
 ON public.teaching_journals FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: attitude_records (Jurnal Sikap)
+DROP POLICY IF EXISTS "Teachers can manage attitude records" ON public.attitude_records;
 CREATE POLICY "Teachers can manage attitude records"
 ON public.attitude_records FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: attendance_records
+DROP POLICY IF EXISTS "Teachers can manage attendance" ON public.attendance_records;
 CREATE POLICY "Teachers can manage attendance"
 ON public.attendance_records FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
+DROP POLICY IF EXISTS "Students can only read their own attendance" ON public.attendance_records;
 CREATE POLICY "Students can only read their own attendance"
 ON public.attendance_records FOR SELECT TO authenticated USING (
     public.get_current_role() = 'siswa' AND student_id = public.get_current_student_id()
 );
 
 -- RLS: assignments
+DROP POLICY IF EXISTS "Read assignments" ON public.assignments;
 CREATE POLICY "Read assignments"
 ON public.assignments FOR SELECT TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin') OR
     (publication_status = 'published' AND class_id = public.get_current_student_class_id())
 );
 
+DROP POLICY IF EXISTS "Teachers can manage assignments" ON public.assignments;
 CREATE POLICY "Teachers can manage assignments"
 ON public.assignments FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: submissions
+DROP POLICY IF EXISTS "Students can view and create their own submissions" ON public.submissions;
 CREATE POLICY "Students can view and create their own submissions"
 ON public.submissions FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin') OR
@@ -439,23 +459,27 @@ ON public.submissions FOR ALL TO authenticated USING (
 );
 
 -- RLS: quizzes
+DROP POLICY IF EXISTS "Read quizzes" ON public.quizzes;
 CREATE POLICY "Read quizzes"
 ON public.quizzes FOR SELECT TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin') OR
     (publication_status = 'published' AND class_id = public.get_current_student_class_id())
 );
 
+DROP POLICY IF EXISTS "Teachers can manage quizzes" ON public.quizzes;
 CREATE POLICY "Teachers can manage quizzes"
 ON public.quizzes FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: quiz_questions (Protect answer_key from students!)
+DROP POLICY IF EXISTS "Teachers can manage all quiz questions" ON public.quiz_questions;
 CREATE POLICY "Teachers can manage all quiz questions"
 ON public.quiz_questions FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
+DROP POLICY IF EXISTS "Students can view questions without leaking" ON public.quiz_questions;
 CREATE POLICY "Students can view questions without leaking"
 ON public.quiz_questions FOR SELECT TO authenticated USING (
     EXISTS (
@@ -467,6 +491,7 @@ ON public.quiz_questions FOR SELECT TO authenticated USING (
 );
 
 -- RLS: quiz_attempts
+DROP POLICY IF EXISTS "Manage quiz attempts" ON public.quiz_attempts;
 CREATE POLICY "Manage quiz attempts"
 ON public.quiz_attempts FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin') OR
@@ -474,6 +499,7 @@ ON public.quiz_attempts FOR ALL TO authenticated USING (
 );
 
 -- RLS: quiz_answers
+DROP POLICY IF EXISTS "Manage quiz answers" ON public.quiz_answers;
 CREATE POLICY "Manage quiz answers"
 ON public.quiz_answers FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin') OR
@@ -485,35 +511,42 @@ ON public.quiz_answers FOR ALL TO authenticated USING (
 );
 
 -- RLS: grade_records
+DROP POLICY IF EXISTS "Teachers can manage grade records" ON public.grade_records;
 CREATE POLICY "Teachers can manage grade records"
 ON public.grade_records FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
+DROP POLICY IF EXISTS "Students can view their own grades" ON public.grade_records;
 CREATE POLICY "Students can view their own grades"
 ON public.grade_records FOR SELECT TO authenticated USING (
     student_id = public.get_current_student_id()
 );
 
 -- RLS: announcements
+DROP POLICY IF EXISTS "Read announcements" ON public.announcements;
 CREATE POLICY "Read announcements"
 ON public.announcements FOR SELECT TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin') OR
     target_class_id IS NULL OR
+    target_class_id = public.get_current_student_id() OR
     target_class_id = public.get_current_student_class_id()
 );
 
+DROP POLICY IF EXISTS "Teachers can manage announcements" ON public.announcements;
 CREATE POLICY "Teachers can manage announcements"
 ON public.announcements FOR ALL TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
 -- RLS: audit_logs
+DROP POLICY IF EXISTS "Teachers and admin can view audit logs" ON public.audit_logs;
 CREATE POLICY "Teachers and admin can view audit logs"
 ON public.audit_logs FOR SELECT TO authenticated USING (
     public.get_current_role() IN ('guru', 'admin')
 );
 
+DROP POLICY IF EXISTS "Authenticated users can insert audit logs" ON public.audit_logs;
 CREATE POLICY "Authenticated users can insert audit logs"
 ON public.audit_logs FOR INSERT TO authenticated WITH CHECK (true);
 

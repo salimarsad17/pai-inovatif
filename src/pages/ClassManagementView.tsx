@@ -14,8 +14,8 @@ import { dataService } from '../services/dataService';
 import { ClassItem, UserProfile } from '../types';
 
 export const ClassManagementView: React.FC = () => {
-  const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState<ClassItem[]>(() => dataService.getLocalClasses());
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editItem, setEditItem] = useState<ClassItem | null>(null);
 

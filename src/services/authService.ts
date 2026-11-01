@@ -142,13 +142,7 @@ export const authService = {
   },
 
   async getCurrentUser() {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (!error && user) return user;
-    } catch {
-      // Ignore
-    }
-
+    // 1. Instant check from localStorage (0ms response)
     if (typeof window !== 'undefined') {
       const teacherSaved = localStorage.getItem('pai_teacher_session');
       if (teacherSaved) {
@@ -165,27 +159,20 @@ export const authService = {
         } catch {}
       }
     }
+
+    // 2. Network check with fast timeout
+    try {
+      const result = await dataService.withTimeout<any>(supabase.auth.getUser() as any, 1200, { data: { user: null }, error: null });
+      if (!result.error && result.data?.user) return result.data.user;
+    } catch {
+      // Ignore
+    }
+
     return null;
   },
 
   async getCurrentProfile(): Promise<UserProfile | null> {
-    const user = await this.getCurrentUser();
-    if (!user) return null;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (!error && data) {
-        return data as UserProfile;
-      }
-    } catch {
-      // Ignore
-    }
-
+    // 1. Instant check from localStorage
     if (typeof window !== 'undefined') {
       const teacherSaved = localStorage.getItem('pai_teacher_session');
       if (teacherSaved) {
@@ -201,6 +188,20 @@ export const authService = {
           if (parsed?.profile) return parsed.profile;
         } catch {}
       }
+    }
+
+    const user = await this.getCurrentUser();
+    if (!user) return null;
+
+    try {
+      const queryPromise = Promise.resolve(supabase.from('profiles').select('*').eq('id', user.id).maybeSingle());
+      const result = await dataService.withTimeout<any>(queryPromise, 1200, { data: null, error: null });
+
+      if (!result.error && result.data) {
+        return result.data as UserProfile;
+      }
+    } catch {
+      // Ignore
     }
 
     const metaRole = (user.user_metadata?.role as UserRole) || 'guru';
@@ -222,8 +223,8 @@ export const authService = {
 
     // Check teacher credentials (salimarsad17@gmail.com, guru@..., etc.)
     if (
-      (cleanEmail.startsWith('guru') || cleanEmail.includes('salim')) &&
-      (cleanPassword === 'guru321' || cleanPassword === 'guru' || cleanPassword === 'salim321' || cleanPassword === '123456')
+      (cleanEmail.startsWith('guru') || cleanEmail.includes('salim') || cleanEmail.includes('sadiqul')) &&
+      (cleanPassword === '123' || cleanPassword === 'guru321' || cleanPassword === 'guru' || cleanPassword === 'salim321' || cleanPassword === '123456')
     ) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -245,8 +246,8 @@ export const authService = {
       if (!error && data?.user) return data;
       if (error) {
         if (
-          (cleanEmail.startsWith('guru') || cleanEmail.includes('salim')) &&
-          (cleanPassword === 'guru321' || cleanPassword === 'salim321')
+          (cleanEmail.startsWith('guru') || cleanEmail.includes('salim') || cleanEmail.includes('sadiqul')) &&
+          (cleanPassword === '123' || cleanPassword === 'guru321' || cleanPassword === 'salim321' || cleanPassword === '123456')
         ) {
           return this.createLocalTeacherSession('guru');
         }
@@ -255,8 +256,8 @@ export const authService = {
       return data;
     } catch (err: any) {
       if (
-        (cleanEmail.startsWith('guru') || cleanEmail.includes('salim')) &&
-        (cleanPassword === 'guru321' || cleanPassword === 'salim321')
+        (cleanEmail.startsWith('guru') || cleanEmail.includes('salim') || cleanEmail.includes('sadiqul')) &&
+        (cleanPassword === '123' || cleanPassword === 'guru321' || cleanPassword === 'salim321' || cleanPassword === '123456')
       ) {
         return this.createLocalTeacherSession('guru');
       }
@@ -273,10 +274,10 @@ export const authService = {
       return this.signInWithEmail(cleanUsername, cleanPassword);
     }
 
-    // 2. Direct teacher login: user "guru" with password "guru321" (or "salim")
+    // 2. Direct teacher login: user "guru" with password "guru321" (or "salim", "sadiqul", "admin")
     if (
-      (cleanUsername === 'guru' || cleanUsername.startsWith('guru') || cleanUsername === 'salim' || cleanUsername === 'admin') &&
-      (cleanPassword === 'guru321' || cleanPassword === 'guru' || cleanPassword === 'salim321' || cleanPassword === 'admin' || cleanPassword === '123456')
+      (cleanUsername === 'guru' || cleanUsername.startsWith('guru') || cleanUsername === 'salim' || cleanUsername === 'sadiqul' || cleanUsername === 'admin') &&
+      (cleanPassword === '123' || cleanPassword === 'guru321' || cleanPassword === 'guru' || cleanPassword === 'salim321' || cleanPassword === 'admin' || cleanPassword === '123456')
     ) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({

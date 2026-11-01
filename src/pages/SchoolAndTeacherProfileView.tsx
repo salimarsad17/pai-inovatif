@@ -41,6 +41,7 @@ export const SchoolAndTeacherProfileView: React.FC<ProfileViewProps> = ({ mode }
   const [teacherName, setTeacherName] = useState(profile?.full_name || '');
   const [teacherNip, setTeacherNip] = useState(profile?.nip || '');
   const [teacherPhone, setTeacherPhone] = useState(profile?.phone || '');
+  const [teacherCount, setTeacherCount] = useState<number>(() => dataService.getTeacherCount());
 
   const [loading, setLoading] = useState(false);
   const [alertMsg, setAlertMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -78,8 +79,9 @@ export const SchoolAndTeacherProfileView: React.FC<ProfileViewProps> = ({ mode }
         nip: teacherNip.trim() || null,
         phone: teacherPhone.trim() || null,
       });
+      dataService.saveTeacherCount(teacherCount);
       await refreshProfile();
-      setAlertMsg({ type: 'success', text: 'Profil Guru PAI berhasil disimpan.' });
+      setAlertMsg({ type: 'success', text: 'Profil Guru PAI & Jumlah Guru berhasil disimpan dan disinkronkan ke dasbor.' });
     } catch (err: any) {
       setAlertMsg({ type: 'error', text: `Gagal memperbarui: ${err.message}` });
     } finally {
@@ -268,11 +270,22 @@ export const SchoolAndTeacherProfileView: React.FC<ProfileViewProps> = ({ mode }
           </div>
           <h3 className="text-base font-bold text-white mb-1">{profile?.full_name}</h3>
           <p className="text-xs text-amber-400 font-semibold mb-1">Guru Pendidikan Agama Islam</p>
-          <p className="text-[11px] text-slate-400 font-mono mb-4">NIP: {profile?.nip || 'Belum diisi'}</p>
+          <p className="text-[11px] text-slate-400 font-mono mb-3">NIP: {profile?.nip || 'Belum diisi'}</p>
 
           <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-xs border border-emerald-500/30">
             Akun Guru Aktif
           </span>
+
+          <div className="w-full mt-5 pt-4 border-t border-slate-800 text-left text-xs space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Guru Terdata:</span>
+              <span className="text-white font-semibold truncate max-w-[130px]">{teacherName || profile?.full_name}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Jumlah Guru Dasbor:</span>
+              <span className="text-cyan-400 font-bold">{teacherCount} Orang</span>
+            </div>
+          </div>
         </div>
 
         {/* Edit Form */}
@@ -302,15 +315,35 @@ export const SchoolAndTeacherProfileView: React.FC<ProfileViewProps> = ({ mode }
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">No. WhatsApp / Kontak</label>
-              <input
-                type="text"
-                placeholder="0812..."
-                value={teacherPhone}
-                onChange={(e) => setTeacherPhone(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">No. WhatsApp / Kontak</label>
+                <input
+                  type="text"
+                  placeholder="0812..."
+                  value={teacherPhone}
+                  onChange={(e) => setTeacherPhone(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Jumlah Guru (Tampil di Dasbor)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  required
+                  value={teacherCount}
+                  onChange={(e) => setTeacherCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 font-bold outline-none focus:border-amber-400 font-mono"
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  Menyesuaikan kartu statistik &ldquo;Jumlah Guru&rdquo; di dasbor
+                </span>
+              </div>
             </div>
 
             <button

@@ -246,7 +246,49 @@ PETUNJUK FORMAT & TATA LETAK:
   return { systemInstruction, prompt };
 }
 
-// Endpoint: AI Generate Teaching Material (Standard JSON)
+// Resilient AI candidate models (prioritizing 3.8 Flash, falling back to Flash-latest and Flash-lite during 503 high demand)
+const AI_CANDIDATE_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-flash-latest',
+  'gemini-3.1-flash-lite',
+];
+
+function isOverloadedError(error: any): boolean {
+  if (!error) return false;
+  const msg = String(error?.message || error).toLowerCase();
+  const code = error?.code || error?.status || '';
+  return (
+    msg.includes('503') ||
+    msg.includes('high demand') ||
+    msg.includes('unavailable') ||
+    msg.includes('temporarily') ||
+    msg.includes('overloaded') ||
+    msg.includes('resource exhausted') ||
+    msg.includes('429') ||
+    code === 503 ||
+    code === 429 ||
+    code === 'UNAVAILABLE'
+  );
+}
+
+function cleanAIErrorMessage(error: any): string {
+  const raw = String(error?.message || error || '');
+  if (isOverloadedError(error)) {
+    return 'Layanan Gemini AI sedang mengalami lonjakan antrean sementara (High Demand / 503). Sistem telah mencoba mengalihkan ke model cadangan, silakan klik Coba Lagi Sekarang.';
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.error?.message) {
+      if (parsed.error.code === 503 || parsed.error.status === 'UNAVAILABLE') {
+        return 'Model AI saat ini sedang mengalami lonjakan antrean (503 High Demand). Silakan klik coba lagi.';
+      }
+      return parsed.error.message;
+    }
+  } catch {}
+  return raw || 'Gagal menghasilkan materi dengan AI.';
+}
+
+// Endpoint: AI Generate Teaching Material (Standard JSON with Multi-Model Fallback)
 app.post('/api/ai/generate', async (req: Request, res: Response) => {
   try {
     if (!ai) {
@@ -278,16 +320,38 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
       customPrompt,
     });
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature: 0.3,
-      },
-    });
+    let generatedText = '';
+    let lastError: any = null;
+    let modelUsed = '';
 
-    const generatedText = response.text || '';
+    for (const model of AI_CANDIDATE_MODELS) {
+      try {
+        console.log(`[AI Generate] Trying model: ${model}`);
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            temperature: 0.3,
+          },
+        });
+
+        generatedText = response.text || '';
+        modelUsed = model;
+        lastError = null;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[AI Generate] Model ${model} encountered error:`, err.message);
+        if (!isOverloadedError(err)) {
+          // Non-overload error (e.g. fatal bad request) - still try next model if available
+        }
+      }
+    }
+
+    if (!generatedText && lastError) {
+      throw lastError;
+    }
 
     return res.json({
       success: true,
@@ -297,16 +361,17 @@ app.post('/api/ai/generate', async (req: Request, res: Response) => {
       semester,
       type,
       content: generatedText,
+      modelUsed,
     });
   } catch (error: any) {
     console.error('Gemini API generation error:', error);
     return res.status(500).json({
-      error: error.message || 'Gagal menghasilkan materi dengan AI.',
+      error: cleanAIErrorMessage(error),
     });
   }
 });
 
-// Endpoint: AI Generate Teaching Material (Fast Streaming SSE)
+// Endpoint: AI Generate Teaching Material (Fast Streaming SSE with Resilient Fallback)
 app.post('/api/ai/generate-stream', async (req: Request, res: Response) => {
   try {
     if (!ai) {
@@ -341,30 +406,56 @@ app.post('/api/ai/generate-stream', async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
 
-    const streamResponse = await ai.models.generateContentStream({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature: 0.3,
-      },
-    });
+    let streamSucceeded = false;
+    let lastError: any = null;
+    let chunksSent = 0;
 
-    for await (const chunk of streamResponse) {
-      const text = chunk.text;
-      if (text) {
-        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+    for (const model of AI_CANDIDATE_MODELS) {
+      try {
+        console.log(`[AI Stream] Trying model: ${model}`);
+        const streamResponse = await ai.models.generateContentStream({
+          model,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            temperature: 0.3,
+          },
+        });
+
+        for await (const chunk of streamResponse) {
+          const text = chunk.text;
+          if (text) {
+            chunksSent++;
+            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+          }
+        }
+
+        streamSucceeded = true;
+        res.write('data: [DONE]\n\n');
+        res.end();
+        break; // Successfully completed stream!
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[AI Stream] Model ${model} encountered error:`, err.message);
+        if (chunksSent > 0) {
+          // If streaming already sent partial document, cannot cleanly switch models mid-way
+          break;
+        }
+        res.write(`data: ${JSON.stringify({ status: `Server padat (${model}), mengalihkan ke model cadangan...` })}\n\n`);
       }
     }
 
-    res.write('data: [DONE]\n\n');
-    res.end();
-  } catch (error: any) {
-    console.error('Gemini Stream Error:', error);
-    if (!res.headersSent) {
-      return res.status(500).json({ error: error.message || 'Gagal menghasilkan materi dengan streaming.' });
+    if (!streamSucceeded && lastError) {
+      const friendlyMsg = cleanAIErrorMessage(lastError);
+      res.write(`data: ${JSON.stringify({ error: friendlyMsg })}\n\n`);
+      res.end();
     }
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+  } catch (error: any) {
+    console.error('Gemini Stream Outer Error:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: cleanAIErrorMessage(error) });
+    }
+    res.write(`data: ${JSON.stringify({ error: cleanAIErrorMessage(error) })}\n\n`);
     res.end();
   }
 });

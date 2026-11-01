@@ -25,6 +25,53 @@ export interface AIGenerateResponse {
   type: string;
   content: string;
   error?: string;
+  modelUsed?: string;
+}
+
+export function formatCleanErrorMessage(rawError: any): string {
+  if (!rawError) return 'Terjadi kendala saat memproses permintaan AI.';
+  const str = typeof rawError === 'string' ? rawError : String(rawError?.message || rawError);
+
+  // Check if string is raw JSON or contains a JSON error block
+  const jsonMatch = str.match(/\{[\s\S]*"error"[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (
+        parsed.error?.code === 503 ||
+        parsed.error?.status === 'UNAVAILABLE' ||
+        (parsed.error?.message && parsed.error.message.includes('high demand'))
+      ) {
+        return 'Layanan Gemini AI sedang mengalami lonjakan antrean sementara (503 High Demand). Silakan klik "Coba Lagi Sekarang".';
+      }
+      if (parsed.error?.message) {
+        return parsed.error.message;
+      }
+    } catch {}
+  }
+
+  const lower = str.toLowerCase();
+  if (
+    lower.includes('503') ||
+    lower.includes('high demand') ||
+    lower.includes('unavailable') ||
+    lower.includes('temporarily') ||
+    lower.includes('overloaded') ||
+    lower.includes('resource exhausted') ||
+    lower.includes('429')
+  ) {
+    return 'Layanan Gemini AI sedang mengalami lonjakan antrean sementara (503 High Demand). Silakan klik "Coba Lagi Sekarang".';
+  }
+
+  if (
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('network error')
+  ) {
+    return 'Gagal terhubung ke server. Periksa koneksi internet Anda atau coba sesaat lagi.';
+  }
+
+  return str.replace(/^Error:\s*/, '');
 }
 
 export const aiService = {
@@ -39,26 +86,31 @@ export const aiService = {
   },
 
   async generateMaterial(params: AIGenerateRequest): Promise<AIGenerateResponse> {
-    const res = await fetch('/api/ai/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
+    try {
+      const res = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+      });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Gagal menghasilkan bahan ajar dengan AI.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}: Gagal menghasilkan bahan ajar dengan AI.`);
+      }
+
+      return data;
+    } catch (err: any) {
+      throw new Error(formatCleanErrorMessage(err));
     }
-
-    return data;
   },
 
   async generateMaterialStream(
     params: AIGenerateRequest,
     onChunk: (accumulated: string, delta: string) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onStatus?: (statusText: string) => void
   ): Promise<string> {
     try {
       const response = await fetch('/api/ai/generate-stream', {
@@ -103,14 +155,17 @@ export const aiService = {
           try {
             const parsed = JSON.parse(dataStr);
             if (parsed.error) {
-              throw new Error(parsed.error);
+              throw new Error(formatCleanErrorMessage(parsed.error));
+            }
+            if (parsed.status && onStatus) {
+              onStatus(parsed.status);
             }
             if (parsed.text) {
               accumulated += parsed.text;
               onChunk(accumulated, parsed.text);
             }
           } catch (e: any) {
-            // Non-JSON SSE string
+            // Non-JSON SSE string or handled error
             if (e.message && e.message !== 'Unexpected token') {
               throw e;
             }
@@ -120,15 +175,21 @@ export const aiService = {
 
       return accumulated;
     } catch (err: any) {
-      // If streaming fails or is aborted by non-abort reason, fallback to non-streaming
       if (signal?.aborted) {
         throw new Error('Generasi bahan ajar dihentikan oleh pengguna.');
       }
       console.warn('Streaming error, falling back to standard generate:', err.message);
-      const fallbackRes = await this.generateMaterial(params);
-      onChunk(fallbackRes.content, fallbackRes.content);
-      return fallbackRes.content;
+      if (onStatus) {
+        onStatus('Mengalihkan ke model cadangan atau mode standar...');
+      }
+
+      try {
+        const fallbackRes = await this.generateMaterial(params);
+        onChunk(fallbackRes.content, fallbackRes.content);
+        return fallbackRes.content;
+      } catch (fallbackErr: any) {
+        throw new Error(formatCleanErrorMessage(fallbackErr));
+      }
     }
   },
 };
-

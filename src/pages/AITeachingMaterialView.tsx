@@ -27,11 +27,13 @@ import {
   ChevronDown,
   ChevronUp,
   Bookmark,
+  Trash2,
+  FolderOpen,
 } from 'lucide-react';
 import { aiService, AIGenerateRequest } from '../services/aiService';
 import { dataService } from '../services/dataService';
 import { useAuth } from '../contexts/AuthContext';
-import { ClassItem } from '../types';
+import { ClassItem, TeachingMaterial } from '../types';
 import {
   extractCrosswordData,
   buildCrosswordLayout,
@@ -432,11 +434,17 @@ const TEACHER_INSTRUCTION_SUGGESTIONS = [
   '🎯 Buat soal HOTS berbobot analisis kritis (C4-C6)',
 ];
 
-export const AITeachingMaterialView: React.FC = () => {
+export interface AITeachingMaterialViewProps {
+  initialGradeLevel?: number;
+}
+
+export const AITeachingMaterialView: React.FC<AITeachingMaterialViewProps> = ({
+  initialGradeLevel = 7,
+}) => {
   const { profile } = useAuth();
 
-  const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [gradeLevel, setGradeLevel] = useState<number>(7);
+  const [classes, setClasses] = useState<ClassItem[]>(() => dataService.getLocalClasses());
+  const [gradeLevel, setGradeLevel] = useState<number>(initialGradeLevel || 7);
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
   const [topic, setTopic] = useState('');
   const [subTopic, setSubTopic] = useState('');
@@ -479,6 +487,21 @@ export const AITeachingMaterialView: React.FC = () => {
     return null;
   }, [generatedResult, generateType]);
 
+  const [savedMaterials, setSavedMaterials] = useState<TeachingMaterial[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+
+  const loadSavedMaterials = async (grade: number) => {
+    setLoadingSaved(true);
+    try {
+      const data = await dataService.getTeachingMaterials(grade);
+      setSavedMaterials(data);
+    } catch (err) {
+      console.warn('Gagal memuat arsip bahan ajar:', err);
+    } finally {
+      setLoadingSaved(false);
+    }
+  };
+
   useEffect(() => {
     async function loadData() {
       const cls = await dataService.getClasses();
@@ -488,6 +511,37 @@ export const AITeachingMaterialView: React.FC = () => {
     }
     loadData();
   }, []);
+
+  // Synchronize grade level and populate default chapter preset when initialGradeLevel or semester changes
+  useEffect(() => {
+    const targetGrade = initialGradeLevel && [7, 8, 9].includes(initialGradeLevel) ? initialGradeLevel : 7;
+    setGradeLevel(targetGrade);
+    setTargetClassId('');
+
+    const presets = PAI_CURRICULUM_PRESETS[targetGrade]?.[semester] || [];
+    if (presets.length > 0) {
+      setTopic(presets[0].topic);
+      setSubTopic(presets[0].subTopics?.[0] || '');
+      setEditableTitle(`Materi PAI: ${presets[0].topic} (Kelas ${targetGrade})`);
+    } else {
+      setTopic('');
+      setSubTopic('');
+    }
+
+    loadSavedMaterials(targetGrade);
+  }, [initialGradeLevel, semester]);
+
+  // Strictly filter classes belonging ONLY to the active grade level (Kelas 7 -> 7 only, Kelas 8 -> 8 only, Kelas 9 -> 9 only)
+  const filteredClasses = React.useMemo(() => {
+    return classes.filter((cls) => {
+      if (cls.grade_level && Number(cls.grade_level) === Number(gradeLevel)) return true;
+      const name = (cls.class_name || '').toUpperCase().trim();
+      if (gradeLevel === 7 && (name.includes('7') || name.startsWith('VII'))) return true;
+      if (gradeLevel === 8 && (name.includes('8') || name.startsWith('VIII'))) return true;
+      if (gradeLevel === 9 && (name.includes('9') || name.startsWith('IX'))) return true;
+      return false;
+    });
+  }, [classes, gradeLevel]);
 
   // Get current presets for grade & semester
   const availablePresets = PAI_CURRICULUM_PRESETS[gradeLevel]?.[semester] || [];
@@ -501,6 +555,29 @@ export const AITeachingMaterialView: React.FC = () => {
       setSubTopic('');
     }
     setEditableTitle(`Materi PAI: ${chapter.topic} (Kelas ${gradeLevel})`);
+  };
+
+  const handleLoadSavedMaterial = (mat: TeachingMaterial) => {
+    setGeneratedResult(mat.content);
+    setEditableTitle(mat.title);
+    setTopic(mat.topic);
+    setActiveTab('preview');
+    setStatusMessage({
+      type: 'success',
+      text: `Bahan ajar "${mat.title}" berhasil dimuat ke editor/pratinjau.`,
+    });
+    window.scrollTo({ top: 380, behavior: 'smooth' });
+  };
+
+  const handleDeleteSavedMaterial = async (id: string, matTitle: string) => {
+    if (!confirm(`Hapus bahan ajar "${matTitle}" dari arsip Kelas ${gradeLevel}?`)) return;
+    try {
+      await dataService.deleteTeachingMaterial(id);
+      await loadSavedMaterials(gradeLevel);
+      setStatusMessage({ type: 'success', text: `Bahan ajar "${matTitle}" berhasil dihapus dari Kelas ${gradeLevel}.` });
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: `Gagal menghapus bahan ajar: ${err.message}` });
+    }
   };
 
   const handleAddInstructionChip = (chip: string) => {
@@ -553,7 +630,10 @@ export const AITeachingMaterialView: React.FC = () => {
             setStreamingStatus(`Sedang mengalirkan respon cepat: ${words} kata disusun...`);
           }
         },
-        abortController.signal
+        abortController.signal,
+        (statusText) => {
+          setStreamingStatus(statusText);
+        }
       );
 
       setStatusMessage({
@@ -606,9 +686,11 @@ export const AITeachingMaterialView: React.FC = () => {
         published_at: new Date().toISOString(),
       });
 
+      await loadSavedMaterials(gradeLevel);
+
       setStatusMessage({
         type: 'success',
-        text: 'Bahan ajar berhasil disimpan ke Supabase database! Siswa di kelas terkait sekarang dapat langsung membacanya.',
+        text: `Bahan ajar berhasil disimpan ke Supabase database dan diarsipkan khusus untuk Kelas ${gradeLevel}!`,
       });
     } catch (err: any) {
       setStatusMessage({
@@ -1658,15 +1740,18 @@ export const AITeachingMaterialView: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Google Gemini 3.8 Flash AI Engine - Respon Cepat & Tepat</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Bahan Ajar PAI &bull; Khusus Kelas {gradeLevel} &bull; Semester {semester} &bull; Fase D SMP</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white">
-              Pusat Bahan Ajar PAI Inovatif Kurikulum Merdeka
+            <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+              <span>Bahan Ajar PAI Kelas {gradeLevel}</span>
+              <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-extrabold uppercase shadow-sm">
+                Fase D SMP
+              </span>
             </h2>
             <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              Hasilkan modul ajar berstandar Kurikulum Merdeka, rangkuman dalil naqli Al-Qur&apos;an &amp; Hadis, lembar kerja siswa (LKPD), studi kasus HOTS, serta latihan soal berbobot secara instan dan komprehensif.
+              Halaman ini dikhususkan hanya untuk materi pembelajaran, silabus, dan lembar kerja peserta didik <strong className="text-amber-400">Kelas {gradeLevel} SMP</strong>.
             </p>
           </div>
 
@@ -1692,45 +1777,70 @@ export const AITeachingMaterialView: React.FC = () => {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-blue-400" />
-              <span>Parameter &amp; Kurikulum Pembelajaran</span>
+              <span>Parameter &amp; Kurikulum Pembelajaran Kelas {gradeLevel}</span>
             </h3>
 
             <form onSubmit={handleGenerate} className="space-y-4">
-              {/* Tingkat Kelas & Semester */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Tingkat Kelas</label>
-                  <select
-                    value={gradeLevel}
-                    onChange={(e) => {
-                      const newGrade = parseInt(e.target.value, 10);
-                      setGradeLevel(newGrade);
-                      setTopic('');
-                      setSubTopic('');
-                    }}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
-                  >
-                    <option value={7}>Kelas 7 SMP (Fase D)</option>
-                    <option value={8}>Kelas 8 SMP (Fase D)</option>
-                    <option value={9}>Kelas 9 SMP (Fase D)</option>
-                  </select>
+              {/* Identitas Khusus Jenjang Kelas Aktif (Terkunci Sesuai Menu) */}
+              <div className="p-3.5 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-2 border-emerald-600/60 rounded-xl shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 font-black flex items-center justify-center text-sm shadow-md border border-amber-300 shrink-0">
+                      K{gradeLevel}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-sm font-black text-white">Bahan Ajar Kelas {gradeLevel}</h4>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-extrabold border border-amber-400/30">
+                          Fase D
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-emerald-200 font-medium">
+                        Khusus Jenjang Kelas {gradeLevel === 7 ? 'VII' : gradeLevel === 8 ? 'VIII' : 'IX'} SMP &bull; UPT SMPN 2 Rebang Tangkas
+                      </p>
+                    </div>
+                  </div>
+                  <span className="hidden sm:inline-block text-[10px] text-emerald-300/90 bg-emerald-900/60 px-2 py-1 rounded-md border border-emerald-700/50 font-mono">
+                    Tingkat {gradeLevel}
+                  </span>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Semester</label>
-                  <select
-                    value={semester}
-                    onChange={(e) => {
-                      const newSem = e.target.value as 'Ganjil' | 'Genap';
-                      setSemester(newSem);
-                      setTopic('');
-                      setSubTopic('');
-                    }}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
-                  >
-                    <option value="Ganjil">Semester Ganjil</option>
-                    <option value="Genap">Semester Genap</option>
-                  </select>
+              {/* Semester Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Semester Pembelajaran</span>
+                  <span className="text-[10px] text-amber-400 font-bold">Aktif: {semester}</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['Ganjil', 'Genap'] as const).map((sem) => {
+                    const isSemSelected = semester === sem;
+                    return (
+                      <button
+                        key={sem}
+                        type="button"
+                        onClick={() => {
+                          setSemester(sem);
+                          const av = PAI_CURRICULUM_PRESETS[gradeLevel]?.[sem] || [];
+                          if (av.length > 0) {
+                            setTopic(av[0].topic);
+                            setSubTopic(av[0].subTopics?.[0] || '');
+                            setEditableTitle(`Materi PAI: ${av[0].topic} (Kelas ${gradeLevel})`);
+                          } else {
+                            setTopic('');
+                            setSubTopic('');
+                          }
+                        }}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                          isSemSelected
+                            ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md shadow-amber-400/25 ring-1 ring-amber-500'
+                            : 'bg-sky-100 text-sky-950 hover:bg-sky-200 border-sky-200'
+                        }`}
+                      >
+                        <span>Semester {sem}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2026,18 +2136,32 @@ export const AITeachingMaterialView: React.FC = () => {
           {/* Status Message Notification */}
           {statusMessage && (
             <div
-              className={`my-3 p-3 rounded-xl text-xs flex items-start gap-2.5 ${
+              className={`my-3 p-3.5 rounded-xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md ${
                 statusMessage.type === 'success'
-                  ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-200'
-                  : 'bg-rose-950/60 border border-rose-800 text-rose-200'
+                  ? 'bg-emerald-950/80 border border-emerald-700 text-emerald-200'
+                  : 'bg-rose-950/85 border border-rose-700 text-rose-200'
               }`}
             >
-              {statusMessage.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
-              ) : (
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <div className="flex items-start gap-2.5">
+                {statusMessage.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                )}
+                <span className="leading-relaxed font-medium">{statusMessage.text}</span>
+              </div>
+              {statusMessage.type === 'error' && (
+                <button
+                  type="button"
+                  onClick={() => handleGenerate({ preventDefault: () => {} } as React.FormEvent)}
+                  disabled={loading}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs shadow-sm cursor-pointer transition-transform active:scale-95 disabled:opacity-50"
+                  title="Klik untuk mencoba ulang pembuatan bahan ajar"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  <span>Coba Lagi Sekarang</span>
+                </button>
               )}
-              <span className="leading-relaxed">{statusMessage.text}</span>
             </div>
           )}
 
@@ -2133,14 +2257,19 @@ export const AITeachingMaterialView: React.FC = () => {
                   onChange={(e) => setTargetClassId(e.target.value)}
                   className="bg-slate-950 border border-slate-700 text-xs text-white rounded-lg px-2.5 py-1.5 outline-none focus:border-amber-400"
                 >
-                  <option value="">Semua Siswa Tingkat {gradeLevel}</option>
-                  {classes
-                    .filter((c) => c.grade_level === gradeLevel)
-                    .map((cls) => (
+                  <option value="">Semua Siswa Kelas {gradeLevel} ({gradeLevel === 7 ? 'VII' : gradeLevel === 8 ? 'VIII' : 'IX'})</option>
+                  {filteredClasses.length > 0 ? (
+                    filteredClasses.map((cls) => (
                       <option key={cls.id} value={cls.id}>
                         Khusus Kelas {cls.class_name}
                       </option>
-                    ))}
+                    ))
+                  ) : (
+                    <>
+                      <option value="default-a">Khusus Kelas {gradeLevel === 7 ? 'VII-A' : gradeLevel === 8 ? 'VIII-A' : 'IX-A'}</option>
+                      <option value="default-b">Khusus Kelas {gradeLevel === 7 ? 'VII-B' : gradeLevel === 8 ? 'VIII-B' : 'IX-B'}</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -2148,7 +2277,7 @@ export const AITeachingMaterialView: React.FC = () => {
                 <button
                   type="button"
                   onClick={downloadAsMarkdown}
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="Unduh Format Markdown (.md)"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -2174,6 +2303,102 @@ export const AITeachingMaterialView: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Arsip & Bank Bahan Ajar Khusus Kelas {gradeLevel} */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-amber-400" />
+              <span>Bank Bahan Ajar &amp; Modul Terpublikasi Khusus Kelas {gradeLevel}</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Daftar seluruh bahan ajar yang telah dibuat dan tersimpan di database khusus untuk jenjang Kelas {gradeLevel} SMP.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
+              {savedMaterials.length} Bahan Ajar Kelas {gradeLevel} Tersedia
+            </span>
+            <button
+              type="button"
+              onClick={() => loadSavedMaterials(gradeLevel)}
+              disabled={loadingSaved}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title="Segarkan Data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingSaved ? 'animate-spin text-amber-400' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {loadingSaved ? (
+          <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+            <span>Memuat arsip bahan ajar Kelas {gradeLevel}...</span>
+          </div>
+        ) : savedMaterials.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {savedMaterials.map((mat) => (
+              <div
+                key={mat.id}
+                className="bg-slate-950/80 border border-slate-800 hover:border-amber-400/50 rounded-xl p-4 transition-all flex flex-col justify-between group shadow-sm"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                      Kelas {mat.grade_level} &bull; {mat.semester || 'Ganjil'}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {mat.created_at ? new Date(mat.created_at).toLocaleDateString('id-ID') : 'Baru'}
+                    </span>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-white line-clamp-2 group-hover:text-amber-300 transition-colors">
+                    {mat.title}
+                  </h4>
+
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+                    Topik: {mat.topic}
+                  </p>
+
+                  <div className="mt-2 text-[10px] text-emerald-400 font-medium">
+                    {mat.class?.class_name ? `Ditujukan: Kelas ${mat.class.class_name}` : `Ditujukan: Semua Siswa Kelas ${mat.grade_level}`}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleLoadSavedMaterial(mat)}
+                    className="flex-1 py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Muat ke Editor / Cetak</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSavedMaterial(mat.id, mat.title)}
+                    className="p-1.5 rounded-lg bg-slate-900 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800/50 transition-colors cursor-pointer"
+                    title="Hapus Bahan Ajar"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-800 rounded-xl p-6">
+            <BookOpen className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+            <p className="font-semibold text-slate-300">Belum ada bahan ajar tersimpan untuk Kelas {gradeLevel}</p>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Gunakan formulir di atas untuk merumuskan bahan ajar baru dengan AI dan simpan ke database khusus untuk Kelas {gradeLevel}.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

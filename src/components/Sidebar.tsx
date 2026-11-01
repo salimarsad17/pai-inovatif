@@ -1,21 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  LayoutDashboard,
-  School,
-  UserCheck,
+  Monitor,
+  MessageSquare,
   Building2,
+  Smile,
   Users,
-  FileText,
+  ListOrdered,
   Sparkles,
-  BookOpenCheck,
-  HeartHandshake,
   CalendarCheck2,
-  Award,
-  BarChart3,
-  ShieldCheck,
-  FileSpreadsheet,
+  UserCheck,
   Settings,
   HelpCircle,
+  ChevronRight,
+  ChevronDown,
+  LogOut,
+  School,
+  FileText,
+  HeartHandshake,
+  BookOpenCheck,
+  Award,
+  BarChart3,
   BookOpen,
   Video,
   ClipboardList,
@@ -25,26 +29,15 @@ import {
   Bell,
   FolderCheck,
   User,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types';
 
 interface SidebarProps {
   currentMenu: string;
   onSelectMenu: (menu: string) => void;
   isOpen: boolean;
   onToggle: () => void;
-}
-
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: any;
-  badge?: string;
-  highlight?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -55,157 +48,471 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { role, logout, profile } = useAuth();
 
-  const guruMenuItems: MenuItem[] = [
-    { id: 'beranda', label: '1. Beranda Guru', icon: LayoutDashboard, badge: 'Utama' },
-    { id: 'profil_sekolah', label: '2. Profil Sekolah', icon: School },
-    { id: 'profil_guru', label: '3. Profil Guru', icon: UserCheck },
-    { id: 'data_kelas', label: '4. Data Kelas', icon: Building2 },
-    { id: 'data_siswa', label: '5. Data Siswa', icon: Users },
-    { id: 'perangkat_ajar', label: '6. Perangkat Ajar', icon: FileText },
-    { id: 'bahan_ajar_ai', label: '7. Bahan Ajar AI', icon: Sparkles, highlight: true },
-    { id: 'jurnal_guru', label: '8. Jurnal Guru', icon: BookOpenCheck },
-    { id: 'jurnal_sikap', label: '9. Jurnal Sikap', icon: HeartHandshake },
-    { id: 'absensi_siswa', label: '10. Absensi Siswa', icon: CalendarCheck2 },
-    { id: 'tugas_penilaian', label: '11. Tugas & Penilaian', icon: Award },
-    { id: 'rekap_nilai', label: '12. Rekap Nilai', icon: BarChart3 },
-    { id: 'guru_wali', label: '13. Guru Wali', icon: ShieldCheck },
-    { id: 'laporan', label: '14. Laporan', icon: FileSpreadsheet },
-    { id: 'master_data', label: '15. Master Data', icon: Settings },
-    { id: 'panduan_setup', label: '16. Panduan Supabase', icon: HelpCircle, badge: 'Setup' },
-  ];
+  // State to track expanded submenus
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
+    sarpras: false,
+    peserta_didik: false,
+    rombel: false,
+    nilai: false,
+    bahan_ajar: true,
+    jurnal_absensi: false,
+  });
 
-  const siswaMenuItems: MenuItem[] = [
-    { id: 'siswa_beranda', label: '1. Beranda Siswa', icon: LayoutDashboard },
-    { id: 'siswa_profil', label: '2. Profil Saya', icon: User },
-    { id: 'siswa_materi', label: '3. Materi PAI', icon: BookOpen },
-    { id: 'siswa_video', label: '4. Video Pembelajaran', icon: Video },
-    { id: 'siswa_tugas', label: '5. Tugas Saya', icon: ClipboardList },
-    { id: 'siswa_kuis', label: '6. Kuis & CBT', icon: FileQuestion, highlight: true },
-    { id: 'siswa_nilai', label: '7. Nilai Saya', icon: Award },
-    { id: 'siswa_kehadiran', label: '8. Riwayat Kehadiran', icon: Calendar },
-    { id: 'siswa_jadwal', label: '9. Jadwal Pembelajaran', icon: Clock },
-    { id: 'siswa_pengumuman', label: '10. Pengumuman', icon: Bell },
-    { id: 'siswa_pengumpulan', label: '11. Riwayat Pengumpulan', icon: FolderCheck },
-    { id: 'siswa_pengaturan', label: '12. Pengaturan Akun', icon: Settings },
-  ];
+  // Automatically expand parent if any child is active
+  useEffect(() => {
+    if (['bahan_ajar_k7', 'bahan_ajar_k8', 'bahan_ajar_k9'].includes(currentMenu)) {
+      setOpenSubmenus((prev) => ({ ...prev, sarpras: true }));
+    }
+    if (['data_siswa'].includes(currentMenu)) {
+      setOpenSubmenus((prev) => ({ ...prev, peserta_didik: true }));
+    }
+    if (['data_kelas'].includes(currentMenu)) {
+      setOpenSubmenus((prev) => ({ ...prev, rombel: true }));
+    }
+    if (['rekap_nilai', 'tugas_penilaian'].includes(currentMenu)) {
+      setOpenSubmenus((prev) => ({ ...prev, nilai: true }));
+    }
+    if (['jurnal_guru', 'jurnal_sikap', 'absensi_siswa'].includes(currentMenu)) {
+      setOpenSubmenus((prev) => ({ ...prev, jurnal_absensi: true }));
+    }
+  }, [currentMenu]);
 
-  const menuItems = role === 'guru' || role === 'admin' ? guruMenuItems : siswaMenuItems;
+  const toggleSubmenu = (menuKey: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setOpenSubmenus((prev) => ({
+      ...prev,
+      [menuKey]: !prev[menuKey],
+    }));
+  };
+
+  const isTeacher = role === 'guru' || role === 'admin';
 
   return (
     <aside
-      className={`fixed lg:static top-0 bottom-0 left-0 z-40 bg-slate-900 border-r border-slate-800 transition-all duration-300 ease-in-out flex flex-col shadow-xl ${
-        isOpen ? 'w-64 translate-x-0' : 'w-0 lg:w-20 -translate-x-full lg:translate-x-0'
+      className={`fixed lg:static top-0 bottom-0 left-0 z-40 bg-[#1e2837] border-r border-[#151c27] text-slate-200 transition-all duration-300 ease-in-out flex flex-col shadow-2xl select-none ${
+        isOpen ? 'w-64 translate-x-0' : 'w-0 lg:w-0 -translate-x-full lg:translate-x-0 overflow-hidden'
       }`}
     >
-      {/* Sidebar Header / Brand */}
-      <div className="h-16 px-4 border-b border-slate-800 flex items-center justify-between">
-        {isOpen ? (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-sm">
-              PAI
-            </div>
-            <div>
-              <span className="font-bold text-sm text-white tracking-wide">PAI INOVATIF</span>
-              <span className="block text-[10px] text-slate-400">
-                {role === 'guru' ? 'Portal Administrasi Guru' : 'Portal Pembelajaran Siswa'}
-              </span>
+      {/* Top Operator Profile Box (Authentic Dapodik styling) */}
+      <div className="p-3.5 border-b border-[#293548] bg-[#1a2331]">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-400/60 shadow-md flex-shrink-0 bg-slate-800">
+            <img
+              src="/dapodik-operator-avatar.png"
+              alt="Operator Avatar"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xs font-bold text-white truncate leading-tight">
+              {profile?.full_name || 'Sadiqul Alim'}
+            </h3>
+            <p className="text-[11px] text-amber-300 font-medium truncate mt-0.5">
+              Guru PAI
+            </p>
+            <div className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+              <span>●</span> Akun Terverifikasi
             </div>
           </div>
-        ) : (
-          <div className="mx-auto w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-sm">
-            PAI
-          </div>
-        )}
-
-        <button
-          onClick={onToggle}
-          className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white hidden lg:flex"
-          title={isOpen ? 'Ciutkan Sidebar' : 'Lebarkan Sidebar'}
-        >
-          {isOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {/* Nav List */}
-      <div className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-thin scrollbar-thumb-slate-700">
-        <div className="px-3 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-          {isOpen ? (role === 'guru' ? 'Menu Guru PAI' : 'Menu Siswa SMP') : '•••'}
         </div>
-
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentMenu === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onSelectMenu(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all group relative ${
-                isActive
-                  ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-900/30'
-                  : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-              } ${item.highlight && !isActive ? 'text-amber-300 hover:text-amber-200' : ''}`}
-              title={!isOpen ? item.label : undefined}
-            >
-              <Icon
-                className={`w-4 h-4 shrink-0 transition-colors ${
-                  isActive
-                    ? 'text-white'
-                    : item.highlight
-                    ? 'text-amber-400'
-                    : 'text-slate-400 group-hover:text-amber-300'
-                }`}
-              />
-
-              {isOpen && (
-                <span className="truncate flex-1 text-left">{item.label}</span>
-              )}
-
-              {isOpen && item.badge && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800 text-amber-300 font-mono text-[9px] border border-amber-500/20">
-                  {item.badge}
-                </span>
-              )}
-
-              {isOpen && item.highlight && !item.badge && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-semibold">
-                  AI
-                </span>
-              )}
-            </button>
-          );
-        })}
       </div>
 
-      {/* Bottom User Quick Info & Signout */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/60">
-        {isOpen ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 text-xs font-bold shrink-0">
-                {profile?.full_name?.charAt(0) || 'U'}
-              </div>
-              <div className="truncate text-left">
-                <p className="text-xs font-semibold text-white truncate">{profile?.full_name}</p>
-                <p className="text-[10px] text-slate-400 capitalize">{role}</p>
-              </div>
-            </div>
+      {/* Main Navigation Items (Authentic Dapodik List) */}
+      <div className="flex-1 overflow-y-auto divide-y divide-[#263244]/40 text-xs py-1">
+        {isTeacher ? (
+          <>
+            {/* Beranda */}
             <button
-              onClick={logout}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
-              title="Keluar"
+              onClick={() => onSelectMenu('beranda')}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                currentMenu === 'beranda'
+                  ? 'bg-[#151c27] text-white font-bold border-l-4 border-amber-500'
+                  : 'hover:bg-[#151c27]/70 text-slate-300'
+              }`}
             >
-              <LogOut className="w-4 h-4" />
+              <Monitor className="w-4 h-4 text-slate-400" />
+              <span>Beranda</span>
             </button>
-          </div>
+
+            {/* Profil Pengguna */}
+            <button
+              onClick={() => onSelectMenu('profil_guru')}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                currentMenu === 'profil_guru'
+                  ? 'bg-[#151c27] text-white font-bold border-l-4 border-amber-500'
+                  : 'hover:bg-[#151c27]/70 text-slate-300'
+              }`}
+            >
+              <UserCheck className="w-4 h-4 text-slate-400" />
+              <span>Profil Pengguna</span>
+            </button>
+
+            {/* Pesan (NEW 4) */}
+            <button
+              onClick={() => onSelectMenu('beranda')}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-4 h-4 text-slate-400" />
+                <span>Pesan</span>
+              </div>
+              <span className="bg-[#e53948] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
+                NEW 4
+              </span>
+            </button>
+
+            {/* Sekolah */}
+            <button
+              onClick={() => onSelectMenu('profil_sekolah')}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                currentMenu === 'profil_sekolah'
+                  ? 'bg-[#151c27] text-white font-bold border-l-4 border-amber-500'
+                  : 'hover:bg-[#151c27]/70 text-slate-300'
+              }`}
+            >
+              <Building2 className="w-4 h-4 text-slate-400" />
+              <span>Sekolah</span>
+            </button>
+
+            {/* Perangkat Ajar */}
+            <button
+              onClick={() => onSelectMenu('perangkat_ajar')}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                currentMenu === 'perangkat_ajar'
+                  ? 'bg-[#151c27] text-white font-bold border-l-4 border-amber-500'
+                  : 'hover:bg-[#151c27]/70 text-slate-300'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-slate-400" />
+              <span>Perangkat Ajar</span>
+            </button>
+
+            {/* Buku Pelajaran */}
+            <div>
+              <button
+                onClick={() => toggleSubmenu('sarpras')}
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors ${
+                  ['bahan_ajar_k7', 'bahan_ajar_k8', 'bahan_ajar_k9'].includes(currentMenu)
+                    ? 'text-white font-semibold'
+                    : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <BookOpen className="w-4 h-4 text-slate-400" />
+                  <span>Buku Pelajaran</span>
+                </div>
+                {openSubmenus.sarpras ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </button>
+              {openSubmenus.sarpras && (
+                <div className="bg-[#17202c] py-1 pl-10 pr-3 space-y-1">
+                  <button
+                    onClick={() => onSelectMenu('bahan_ajar_k7')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block transition-colors ${
+                      currentMenu === 'bahan_ajar_k7' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Kelas 7
+                  </button>
+                  <button
+                    onClick={() => onSelectMenu('bahan_ajar_k8')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block transition-colors ${
+                      currentMenu === 'bahan_ajar_k8' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Kelas 8
+                  </button>
+                  <button
+                    onClick={() => onSelectMenu('bahan_ajar_k9')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block transition-colors ${
+                      currentMenu === 'bahan_ajar_k9' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Kelas 9
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Peserta Didik */}
+            <div>
+              <button
+                onClick={() => {
+                  toggleSubmenu('peserta_didik');
+                  onSelectMenu('data_siswa');
+                }}
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors ${
+                  currentMenu === 'data_siswa' ? 'text-white font-semibold' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Smile className="w-4 h-4 text-slate-400" />
+                  <span>Peserta Didik</span>
+                </div>
+                {openSubmenus.peserta_didik ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </button>
+              {openSubmenus.peserta_didik && (
+                <div className="bg-[#17202c] py-1 pl-10 pr-3 space-y-1">
+                  <button
+                    onClick={() => onSelectMenu('data_siswa')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block ${
+                      currentMenu === 'data_siswa' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Data 249 Siswa Aktif
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Rombongan Belajar */}
+            <div>
+              <button
+                onClick={() => {
+                  toggleSubmenu('rombel');
+                  onSelectMenu('data_kelas');
+                }}
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors ${
+                  currentMenu === 'data_kelas' ? 'text-white font-semibold' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  <span>Rombongan Belajar</span>
+                </div>
+                {openSubmenus.rombel ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </button>
+              {openSubmenus.rombel && (
+                <div className="bg-[#17202c] py-1 pl-10 pr-3 space-y-1">
+                  <button
+                    onClick={() => onSelectMenu('data_kelas')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block ${
+                      currentMenu === 'data_kelas' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Data 10 Rombel (Kls 7, 8, 9)
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Nilai */}
+            <div>
+              <button
+                onClick={() => {
+                  toggleSubmenu('nilai');
+                  onSelectMenu('rekap_nilai');
+                }}
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors ${
+                  ['rekap_nilai', 'tugas_penilaian'].includes(currentMenu) ? 'text-white font-semibold' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <ListOrdered className="w-4 h-4 text-slate-400" />
+                  <span>Nilai</span>
+                </div>
+                {openSubmenus.nilai ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </button>
+              {openSubmenus.nilai && (
+                <div className="bg-[#17202c] py-1 pl-10 pr-3 space-y-1">
+                  <button
+                    onClick={() => onSelectMenu('rekap_nilai')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block ${
+                      currentMenu === 'rekap_nilai' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Rekap Nilai Rapor PAI
+                  </button>
+                  <button
+                    onClick={() => onSelectMenu('tugas_penilaian')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block ${
+                      currentMenu === 'tugas_penilaian' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Tugas & Penilaian Formatif
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Modul & AI Generator */}
+            <button
+              onClick={() => onSelectMenu('bahan_ajar_ai')}
+              className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors ${
+                currentMenu === 'bahan_ajar_ai'
+                  ? 'bg-[#151c27] text-white font-bold border-l-4 border-amber-500'
+                  : ''
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Modul & AI Generator</span>
+              </div>
+              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] px-1.5 py-0.2 rounded font-bold">
+                ✨ AI
+              </span>
+            </button>
+
+            {/* Jurnal & Absensi */}
+            <div>
+              <button
+                onClick={() => toggleSubmenu('jurnal_absensi')}
+                className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors ${
+                  ['jurnal_guru', 'jurnal_sikap', 'absensi_siswa'].includes(currentMenu)
+                    ? 'text-white font-semibold'
+                    : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <CalendarCheck2 className="w-4 h-4 text-slate-400" />
+                  <span>Jurnal & Absensi</span>
+                </div>
+                {openSubmenus.jurnal_absensi ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </button>
+              {openSubmenus.jurnal_absensi && (
+                <div className="bg-[#17202c] py-1 pl-10 pr-3 space-y-1">
+                  <button
+                    onClick={() => onSelectMenu('jurnal_guru')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block ${
+                      currentMenu === 'jurnal_guru' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Jurnal Mengajar Guru
+                  </button>
+                  <button
+                    onClick={() => onSelectMenu('jurnal_sikap')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block ${
+                      currentMenu === 'jurnal_sikap' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Jurnal Penilaian Sikap
+                  </button>
+                  <button
+                    onClick={() => onSelectMenu('absensi_siswa')}
+                    className={`w-full text-left py-1.5 text-[11px] truncate block ${
+                      currentMenu === 'absensi_siswa' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Absensi Siswa Per Pertemuan
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Pengaturan */}
+            <button
+              onClick={() => onSelectMenu('master_data')}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 transition-colors ${
+                currentMenu === 'master_data' ? 'bg-[#151c27] text-white font-bold' : 'text-slate-300'
+              }`}
+            >
+              <Settings className="w-4 h-4 text-slate-400" />
+              <span>Pengaturan</span>
+            </button>
+
+            {/* Tentang */}
+            <button
+              onClick={() => onSelectMenu('panduan_setup')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors"
+            >
+              <HelpCircle className="w-4 h-4 text-slate-400" />
+              <span>Tentang</span>
+            </button>
+          </>
         ) : (
-          <button
-            onClick={logout}
-            className="w-full flex justify-center p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
-            title="Keluar"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          /* Student Menus */
+          <>
+            <button
+              onClick={() => onSelectMenu('siswa_beranda')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300"
+            >
+              <Monitor className="w-4 h-4 text-slate-400" />
+              <span>Beranda Siswa</span>
+            </button>
+            <button
+              onClick={() => onSelectMenu('siswa_profil')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300"
+            >
+              <User className="w-4 h-4 text-slate-400" />
+              <span>Profil Saya</span>
+            </button>
+            <button
+              onClick={() => onSelectMenu('siswa_materi')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300"
+            >
+              <BookOpen className="w-4 h-4 text-slate-400" />
+              <span>Materi PAI</span>
+            </button>
+            <button
+              onClick={() => onSelectMenu('siswa_video')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300"
+            >
+              <Video className="w-4 h-4 text-slate-400" />
+              <span>Video Pembelajaran</span>
+            </button>
+            <button
+              onClick={() => onSelectMenu('siswa_tugas')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300"
+            >
+              <ClipboardList className="w-4 h-4 text-slate-400" />
+              <span>Tugas Saya</span>
+            </button>
+            <button
+              onClick={() => onSelectMenu('siswa_kuis')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300"
+            >
+              <FileQuestion className="w-4 h-4 text-slate-400" />
+              <span>Kuis & CBT</span>
+            </button>
+            <button
+              onClick={() => onSelectMenu('siswa_nilai')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300"
+            >
+              <Award className="w-4 h-4 text-slate-400" />
+              <span>Nilai Saya</span>
+            </button>
+            <button
+              onClick={() => onSelectMenu('siswa_kehadiran')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300"
+            >
+              <Calendar className="w-4 h-4 text-slate-400" />
+              <span>Riwayat Kehadiran</span>
+            </button>
+          </>
         )}
+      </div>
+
+      {/* Red Keluar Button at the bottom (Authentic Dapodik bottom) */}
+      <div className="p-0 border-t border-[#151c27]">
+        <button
+          onClick={logout}
+          className="w-full bg-[#e53948] hover:bg-[#d42d3d] active:bg-[#c22030] text-white font-bold py-2.5 px-4 flex items-center justify-center gap-2 transition-colors text-xs tracking-wide shadow-md"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Keluar</span>
+        </button>
       </div>
     </aside>
   );

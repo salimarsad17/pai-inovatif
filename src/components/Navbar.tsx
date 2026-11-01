@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import {
   Bell,
-  Search,
   Menu,
-  X,
+  ChevronLeft,
   User,
   LogOut,
-  Sparkles,
-  BookOpen,
-  School,
   ExternalLink,
   ChevronDown,
+  Info,
+  CheckCircle,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Announcement } from '../types';
@@ -31,187 +29,167 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { profile, student, role, logout, schoolSettings } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800 text-white shadow-md">
-      {/* Ticker / Running Text "Guru Kreatif, Siswa Aktif" */}
-      <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 font-semibold text-xs py-1 px-4 overflow-hidden shadow-inner flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="bg-slate-950 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-            Motto
-          </span>
-          <div className="overflow-hidden whitespace-nowrap">
-            <span className="inline-block animate-pulse tracking-wide font-medium">
-              ✨ &ldquo;Guru Kreatif, Siswa Aktif&rdquo; &bull; {schoolSettings?.school_name || 'UPT SMPN 2 Rebang Tangkas'} &bull; Tahun Ajaran {schoolSettings?.academic_year || '2025/2026'} ({schoolSettings?.semester || 'Ganjil'})
-            </span>
-          </div>
-        </div>
-        <span className="text-[11px] hidden sm:inline-block opacity-90 font-mono">
-          PAI INOVATIF v1.0
-        </span>
-      </div>
-
-      {/* Main Bar */}
-      <div className="px-4 py-2.5 flex items-center justify-between gap-3">
-        {/* Left: Hamburger & School Logo / Title */}
+    <header className="sticky top-0 z-30 bg-[#2d3a4d] border-b border-[#222c3b] text-white shadow-md select-none">
+      <div className="flex items-center justify-between h-12 px-2 sm:px-4">
+        {/* Left: Dapodik Logo & Title & Collapse Arrow */}
         <div className="flex items-center gap-3">
+          {/* Dapodik Brand Banner */}
+          <div className="flex items-center gap-2 pr-3 border-r border-slate-600/40">
+            <img
+              src="/dapodik-logo.png"
+              alt="Dapodik"
+              className="w-7 h-7 object-contain drop-shadow"
+              onError={(e) => {
+                // Fallback icon if image fails
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+            <div className="leading-tight hidden sm:block">
+              <div className="text-[13px] font-extrabold text-white tracking-wide">
+                Dapodik
+              </div>
+              <div className="text-[10px] text-slate-300 font-normal tracking-tight">
+                Satu Data Pendidikan Indonesia
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Toggle Icon / Collapse Arrow */}
           <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors focus:outline-none"
-            title="Buka/Tutup Menu"
+            className="p-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 transition-colors focus:outline-none flex items-center gap-1.5"
+            title={isSidebarOpen ? 'Ciutkan Sidebar' : 'Buka Sidebar'}
           >
-            {isSidebarOpen ? <Menu className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <ChevronLeft
+              className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${
+                isSidebarOpen ? '' : 'rotate-180'
+              }`}
+            />
+            <Menu className="w-4 h-4 text-slate-200" />
           </button>
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-amber-500 flex items-center justify-center shadow-lg border border-amber-400/30 text-white font-bold">
-              <BookOpen className="w-5 h-5 text-amber-200" />
-            </div>
-            <div className="leading-tight">
-              <div className="font-extrabold text-base tracking-wide flex items-center gap-1.5">
-                <span className="text-white">PAI</span>
-                <span className="text-amber-400">INOVATIF</span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium truncate max-w-[190px] sm:max-w-none">
-                UPT SMPN 2 Rebang Tangkas
-              </p>
-            </div>
+          {/* School Name Header */}
+          <div className="flex items-center gap-2 overflow-hidden">
+            <h1 className="text-xs sm:text-sm font-bold text-white tracking-wide truncate">
+              {schoolSettings?.school_name || 'UPT SMP NEGERI 2 REBANG TANGKAS'} - 2026/2027
+            </h1>
           </div>
         </div>
 
-        {/* Center: Search Bar */}
-        <div className="hidden md:flex flex-1 max-w-md mx-4">
-          <div className="relative w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari materi, tugas, siswa, jurnal..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800/80 hover:bg-slate-800 focus:bg-slate-800 border border-slate-700 focus:border-amber-500 rounded-lg pl-9 pr-4 py-1.5 text-xs text-white placeholder-slate-400 transition-all outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Right: Notifications & User Profile */}
+        {/* Right Section: Sync Status, Notifications & Profile */}
         <div className="flex items-center gap-2">
-          {/* Notifications */}
+
+
+          {/* Notification Bell */}
           <div className="relative">
             <button
               onClick={() => {
                 setShowNotifications(!showNotifications);
                 setShowProfileMenu(false);
               }}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 relative transition-colors"
-              title="Pengumuman & Notifikasi"
+              className="p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 transition-colors relative"
+              title="Pemberitahuan Sistem"
             >
               <Bell className="w-4 h-4" />
               {announcements.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-slate-900 animate-ping" />
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#2d3a4d]" />
               )}
             </button>
 
             {/* Notification Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="px-4 py-2 border-b border-slate-700 flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Bell className="w-3.5 h-3.5 text-amber-400" /> Pengumuman Sekolah
+              <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-lg shadow-2xl py-2 z-50 text-slate-800 animate-in fade-in">
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Bell className="w-3.5 h-3.5 text-blue-600" /> Pemberitahuan & Pesan
                   </h4>
-                  <span className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">
-                    {announcements.length} Baru
+                  <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold">
+                    {announcements.length || 1} Baru
                   </span>
                 </div>
-                <div className="max-h-64 overflow-y-auto divide-y divide-slate-700/60">
-                  {announcements.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400">
-                      Belum ada pengumuman baru saat ini.
+                <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 text-xs">
+                  <div className="p-3 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-1.5 mb-1 text-slate-900 font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      Pengisian Instrumen PAK KPK 2026/2027
                     </div>
-                  ) : (
-                    announcements.map((item) => (
-                      <div key={item.id} className="p-3 hover:bg-slate-700/50 transition-colors">
-                        <div className="flex items-center gap-2 mb-1">
-                          {item.is_important && (
-                            <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold">
-                              Penting
-                            </span>
-                          )}
-                          <h5 className="text-xs font-semibold text-white truncate">{item.title}</h5>
-                        </div>
-                        <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
-                          {item.content}
-                        </p>
-                      </div>
-                    ))
-                  )}
+                    <p className="text-[11px] text-slate-600">
+                      Mohon Kepala Sekolah dan Operator UPT SMP NEGERI 2 REBANG TANGKAS melengkapi instrumen PAK KPK.
+                    </p>
+                  </div>
+                  {announcements.map((item) => (
+                    <div key={item.id} className="p-3 hover:bg-slate-50">
+                      <div className="font-semibold text-slate-800">{item.title}</div>
+                      <p className="text-[11px] text-slate-600 line-clamp-2">{item.content}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* User Badge & Menu */}
+          {/* Profile Dropdown */}
           <div className="relative">
             <button
               onClick={() => {
                 setShowProfileMenu(!showProfileMenu);
                 setShowNotifications(false);
               }}
-              className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700"
+              className="flex items-center gap-2 p-1 rounded hover:bg-slate-700/60 transition-colors text-xs font-medium text-white"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center font-bold text-slate-950 text-xs shadow-md">
-                {profile?.full_name?.charAt(0).toUpperCase() || 'P'}
+              <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-400/50 bg-slate-800 flex items-center justify-center">
+                <img
+                  src="/dapodik-operator-avatar.png"
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
               </div>
-              <div className="text-left hidden lg:block">
-                <div className="text-xs font-semibold text-white leading-tight truncate max-w-[120px]">
-                  {profile?.full_name || 'Pengguna'}
-                </div>
-                <div className="text-[10px] text-amber-400 capitalize font-medium">
-                  {role === 'guru' ? 'Guru PAI' : `Siswa (${student?.class?.class_name || 'SMP'})`}
-                </div>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden lg:block" />
+              <span className="hidden lg:inline-block font-semibold">
+                {profile?.full_name || 'Sadiqul Alim'}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
-            {/* Profile Dropdown */}
             {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-2 z-50">
-                <div className="px-4 py-2 border-b border-slate-700">
-                  <p className="text-xs font-bold text-white truncate">{profile?.full_name}</p>
-                  <p className="text-[11px] text-slate-400 truncate">@{profile?.username}</p>
-                  <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold uppercase">
-                    {role}
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-2xl py-2 z-50 text-slate-800 animate-in fade-in">
+                <div className="px-4 py-2 border-b border-slate-100">
+                  <p className="text-xs font-bold text-slate-900">{profile?.full_name || 'Sadiqul Alim'}</p>
+                  <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
+                    Akun Terverifikasi
                   </span>
                 </div>
-
-                <div className="py-1">
+                <div className="py-1 text-xs">
                   <button
                     onClick={() => {
                       setShowProfileMenu(false);
                       if (onSelectMenu) onSelectMenu(role === 'guru' ? 'profil_guru' : 'profil_saya');
                     }}
-                    className="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                   >
-                    <User className="w-3.5 h-3.5 text-slate-400" /> Profil Saya
+                    <User className="w-3.5 h-3.5 text-slate-500" /> Profil Pengguna
                   </button>
                   <button
                     onClick={() => {
                       setShowProfileMenu(false);
                       if (onSelectMenu) onSelectMenu('profil_sekolah');
                     }}
-                    className="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                   >
-                    <School className="w-3.5 h-3.5 text-slate-400" /> Profil Sekolah
+                    <Info className="w-3.5 h-3.5 text-slate-500" /> Profil Sekolah
                   </button>
                 </div>
-
-                <div className="border-t border-slate-700 pt-1">
+                <div className="border-t border-slate-100 pt-1">
                   <button
                     onClick={() => {
                       setShowProfileMenu(false);
                       logout();
                     }}
-                    className="w-full text-left px-4 py-2 text-xs text-rose-400 hover:bg-rose-950/40 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 text-xs font-medium"
                   >
                     <LogOut className="w-3.5 h-3.5" /> Keluar (Logout)
                   </button>

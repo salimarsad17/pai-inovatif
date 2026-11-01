@@ -29,7 +29,7 @@ export const DashboardStudent: React.FC<DashboardStudentProps> = ({ onSelectMenu
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function loadStudentData() {

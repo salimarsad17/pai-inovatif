@@ -58,6 +58,19 @@ export const ReportsView: React.FC = () => {
   }, [selectedClassId]);
 
   const handlePrint = () => {
+    const oldStyle = document.getElementById('a4-reports-print-style');
+    if (oldStyle) oldStyle.remove();
+
+    const styleEl = document.createElement('style');
+    styleEl.id = 'a4-reports-print-style';
+    const isLandscape = reportType === 'jurnal' || reportType === 'kehadiran';
+    styleEl.innerHTML = `
+      @page {
+        size: A4 ${isLandscape ? 'landscape' : 'portrait'} !important;
+        margin: 10mm 12mm 12mm 12mm !important;
+      }
+    `;
+    document.head.appendChild(styleEl);
     window.print();
   };
 
@@ -167,37 +180,59 @@ export const ReportsView: React.FC = () => {
         {reportType === 'jurnal' ? (
           <div>
             <h4 className="text-xs font-bold uppercase text-slate-800 mb-2">
-              Rekapitulasi Jurnal Pelaksanaan Pembelajaran
+              Buku Jurnal Harian Pelaksanaan Pembelajaran PAI
             </h4>
             <table className="w-full text-left border-collapse text-xs border border-slate-300">
               <thead>
                 <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
-                  <th className="p-2 border-r border-slate-300 w-10">No</th>
-                  <th className="p-2 border-r border-slate-300 w-28">Tanggal</th>
-                  <th className="p-2 border-r border-slate-300">Materi & Tujuan</th>
-                  <th className="p-2 border-r border-slate-300">Kegiatan Pembelajaran</th>
-                  <th className="p-2">Refleksi / Kendala</th>
+                  <th className="p-2 border-r border-slate-300 w-10 text-center">No</th>
+                  <th className="p-2 border-r border-slate-300 w-28">Hari / Tanggal</th>
+                  <th className="p-2 border-r border-slate-300 w-16 text-center">Kelas</th>
+                  <th className="p-2 border-r border-slate-300 w-24 text-center">Jam</th>
+                  <th className="p-2 border-r border-slate-300 min-w-[140px]">Materi Pokok</th>
+                  <th className="p-2 border-r border-slate-300 min-w-[160px]">Kegiatan KBM</th>
+                  <th className="p-2 border-r border-slate-300 w-28 text-center">Kehadiran (S, I, A)</th>
+                  <th className="p-2 min-w-[120px]">Ket</th>
                 </tr>
               </thead>
               <tbody>
                 {journals.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-4 text-center text-slate-500 italic">
+                    <td colSpan={8} className="p-4 text-center text-slate-500 italic">
                       Belum ada data jurnal untuk kelas ini.
                     </td>
                   </tr>
                 ) : (
-                  journals.map((j, idx) => (
-                    <tr key={j.id} className="border-b border-slate-200">
-                      <td className="p-2 border-r border-slate-200 text-center font-mono">{idx + 1}</td>
-                      <td className="p-2 border-r border-slate-200 font-mono">
-                        {new Date(j.journal_date).toLocaleDateString('id-ID')}
-                      </td>
-                      <td className="p-2 border-r border-slate-200 font-semibold">{j.topic}</td>
-                      <td className="p-2 border-r border-slate-200 line-clamp-2">{j.activities}</td>
-                      <td className="p-2 text-slate-600">{j.reflection || j.obstacles || '-'}</td>
-                    </tr>
-                  ))
+                  journals.map((j, idx) => {
+                    const dateObj = new Date(j.journal_date + 'T00:00:00');
+                    const dayName = dateObj.toLocaleDateString('id-ID', { weekday: 'short' });
+                    const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'numeric', year: 'numeric' });
+                    return (
+                      <tr key={j.id} className="border-b border-slate-200">
+                        <td className="p-2 border-r border-slate-200 text-center font-mono">{idx + 1}</td>
+                        <td className="p-2 border-r border-slate-200 font-mono">
+                          <span className="font-semibold block">{dayName}</span>
+                          <span className="text-[11px] text-slate-600">{dateStr}</span>
+                        </td>
+                        <td className="p-2 border-r border-slate-200 text-center font-semibold">
+                          {j.class?.class_name || currentClass?.class_name || '-'}
+                        </td>
+                        <td className="p-2 border-r border-slate-200 text-center font-mono text-[11px]">
+                          {j.teaching_hour || 'Jam 1-2'}
+                        </td>
+                        <td className="p-2 border-r border-slate-200 font-semibold">{j.topic}</td>
+                        <td className="p-2 border-r border-slate-200 whitespace-pre-line text-[11px] leading-relaxed">
+                          {j.activities}
+                        </td>
+                        <td className="p-2 border-r border-slate-200 text-center text-[11px] font-mono">
+                          S: {j.attendance_s ?? 0} &bull; I: {j.attendance_i ?? 0} &bull; A: {j.attendance_a ?? 0}
+                        </td>
+                        <td className="p-2 text-slate-700 text-[11px]">
+                          {j.notes || j.reflection || 'KBM terlaksana baik'}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
