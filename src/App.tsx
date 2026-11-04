@@ -13,13 +13,16 @@ import { AttitudeJournalView } from './pages/AttitudeJournalView';
 import { AssignmentView } from './pages/AssignmentView';
 import { GradeRecapView } from './pages/GradeRecapView';
 import { TeachingDocumentsView } from './pages/TeachingDocumentsView';
+import { StudentTextbookView } from './pages/StudentTextbookView';
 import { AITeachingMaterialView } from './pages/AITeachingMaterialView';
+import { MediaAjarView } from './pages/MediaAjarView';
 import { SchoolAndTeacherProfileView } from './pages/SchoolAndTeacherProfileView';
 import { ReportsView } from './pages/ReportsView';
 import { HomeroomView } from './pages/HomeroomView';
 import { MasterDataView } from './pages/MasterDataView';
 import { StudentPortalViews } from './pages/StudentPortalViews';
 import { SetupGuideModal } from './pages/SetupGuideModal';
+import { ClassMessagingView } from './pages/ClassMessagingView';
 import { dataService } from './services/dataService';
 import { Announcement } from './types';
 import { BookOpen, Sparkles } from 'lucide-react';
@@ -107,6 +110,8 @@ function AppContent() {
     switch (currentMenu) {
       case 'beranda':
         return <DashboardTeacher onSelectMenu={handleSelectMenu} />;
+      case 'pesan':
+        return <ClassMessagingView onSelectMenu={handleSelectMenu} />;
       case 'data_administrasi':
       case 'profil_sekolah':
         return <SchoolAndTeacherProfileView mode="school" />;
@@ -119,13 +124,14 @@ function AppContent() {
       case 'perangkat_ajar':
         return <TeachingDocumentsView />;
       case 'bahan_ajar_ai':
-        return <AITeachingMaterialView initialGradeLevel={7} />;
+      case 'media_ajar':
+        return <MediaAjarView initialGradeLevel={7} onSelectMenu={handleSelectMenu} />;
       case 'bahan_ajar_k7':
-        return <AITeachingMaterialView initialGradeLevel={7} />;
+        return <StudentTextbookView gradeLevel={7} onSelectMenu={handleSelectMenu} />;
       case 'bahan_ajar_k8':
-        return <AITeachingMaterialView initialGradeLevel={8} />;
+        return <StudentTextbookView gradeLevel={8} onSelectMenu={handleSelectMenu} />;
       case 'bahan_ajar_k9':
-        return <AITeachingMaterialView initialGradeLevel={9} />;
+        return <StudentTextbookView gradeLevel={9} onSelectMenu={handleSelectMenu} />;
       case 'jurnal_guru':
         return <TeacherJournalView />;
       case 'jurnal_sikap':
@@ -151,6 +157,12 @@ function AppContent() {
   const renderStudentView = () => {
     if (currentMenu === 'siswa_beranda') {
       return <DashboardStudent onSelectMenu={handleSelectMenu} />;
+    }
+    if (currentMenu === 'siswa_pesan' || currentMenu === 'pesan') {
+      return <ClassMessagingView isStudentView={true} onSelectMenu={handleSelectMenu} />;
+    }
+    if (currentMenu === 'siswa_video' || currentMenu === 'media_ajar' || currentMenu === 'bahan_ajar_ai') {
+      return <MediaAjarView initialGradeLevel={7} onSelectMenu={handleSelectMenu} />;
     }
     return (
       <StudentPortalViews

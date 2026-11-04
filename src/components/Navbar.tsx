@@ -126,6 +126,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   ))}
                 </div>
+                <div className="p-2 bg-slate-50 border-t border-slate-100 text-center">
+                  <button
+                    onClick={() => {
+                      onSelectMenu?.('pesan');
+                      setShowNotifications(false);
+                    }}
+                    className="w-full py-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer"
+                  >
+                    Buka Menu Pesan &amp; Q&amp;A Kelas &rarr;
+                  </button>
+                </div>
               </div>
             )}
           </div>

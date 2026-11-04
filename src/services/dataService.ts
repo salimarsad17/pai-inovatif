@@ -18,6 +18,8 @@ import {
   Announcement,
   AuditLog,
 } from '../types';
+import { DEFAULT_TEACHING_DOCUMENTS } from '../data/defaultTeachingDocuments';
+import { documentStorage } from './documentStorage';
 
 // Fast timeout utility to prevent any network latency from freezing the UI
 export async function withTimeout<T>(promise: Promise<T>, ms = 2500, fallback: T): Promise<T> {
@@ -673,45 +675,124 @@ export const dataService = {
   },
 
   // ================= TEACHING DOCUMENTS (PERANGKAT AJAR) =================
+  getLocalTeachingDocuments(): TeachingDocument[] {
+    if (typeof window === 'undefined') return DEFAULT_TEACHING_DOCUMENTS;
+    try {
+      const stored = localStorage.getItem('pai_custom_teaching_docs');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_TEACHING_DOCUMENTS;
+  },
+
+  saveLocalTeachingDocument(item: TeachingDocument) {
+    if (typeof window === 'undefined') return;
+    try {
+      const list = this.getLocalTeachingDocuments();
+      // Strip heavy file_data from localStorage; it is stored in IndexedDB via documentStorage
+      const sanitizedItem = { ...item };
+      delete sanitizedItem.file_data;
+
+      const idx = list.findIndex((d) => d.id === item.id);
+      if (idx >= 0) {
+        list[idx] = sanitizedItem;
+      } else {
+        list.unshift(sanitizedItem);
+      }
+      localStorage.setItem('pai_custom_teaching_docs', JSON.stringify(list));
+    } catch (e) {
+      console.warn('Failed saving local teaching document to localStorage:', e);
+    }
+  },
+
+  deleteLocalTeachingDocument(id: string) {
+    if (typeof window === 'undefined') return;
+    const list = this.getLocalTeachingDocuments().filter((d) => d.id !== id);
+    localStorage.setItem('pai_custom_teaching_docs', JSON.stringify(list));
+    documentStorage.deleteFile(id).catch(() => {});
+  },
+
   async getTeachingDocuments(category?: string, gradeLevel?: number): Promise<TeachingDocument[]> {
     const cacheKey = `teaching_docs_${category || 'all'}_${gradeLevel || 'all'}`;
     const cached = getCached<TeachingDocument[]>(cacheKey);
     if (cached) return cached;
 
     const fetchPromise = (async () => {
+      let dbDocs: TeachingDocument[] = [];
       try {
         let query = supabase.from('teaching_documents').select('*');
         if (category) query = query.eq('category', category);
         if (gradeLevel) query = query.eq('grade_level', gradeLevel);
 
         const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) {
-          console.warn('Could not fetch teaching documents:', error.message);
-          return [];
+        if (!error && data) {
+          dbDocs = data as TeachingDocument[];
         }
-        return (data || []) as TeachingDocument[];
       } catch (err: any) {
         console.warn('Fetch teaching documents timeout/error:', err?.message);
-        return [];
       }
+
+      // Merge with local documents
+      const localDocs = this.getLocalTeachingDocuments();
+      let combined = [...dbDocs];
+      localDocs.forEach((ld) => {
+        if (!combined.some((cd) => cd.id === ld.id)) {
+          combined.push(ld);
+        }
+      });
+
+      // Filter
+      let filtered = combined;
+      if (category) filtered = filtered.filter((d) => d.category === category);
+      if (gradeLevel && gradeLevel > 0) filtered = filtered.filter((d) => d.grade_level === gradeLevel);
+
+      return filtered;
     })();
 
-    const result = await withTimeout(fetchPromise, 2500, []);
+    const result = await withTimeout(fetchPromise, 2500, this.getLocalTeachingDocuments());
     setCached(cacheKey, result);
     return result;
   },
 
-  async createTeachingDocument(item: Omit<TeachingDocument, 'id' | 'created_at' | 'updated_at'>) {
+  async createTeachingDocument(item: Omit<TeachingDocument, 'id' | 'created_at' | 'updated_at'> & { id?: string }) {
     clearCache('teaching_docs');
-    const { data, error } = await supabase.from('teaching_documents').insert(item).select().single();
-    if (error) throw error;
-    return data as TeachingDocument;
+    const newId = item.id || `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const fullDoc: TeachingDocument = {
+      ...item,
+      id: newId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Store large file data in IndexedDB to preserve localStorage quota
+    if (item.file_data) {
+      await documentStorage.saveFile(newId, item.file_data);
+    }
+
+    // Try Supabase insert
+    try {
+      const sanitized = { ...fullDoc };
+      delete (sanitized as any).file_data; // Avoid payload size limits on basic postgres table
+      await supabase.from('teaching_documents').insert(sanitized);
+    } catch (e: any) {
+      console.warn('Supabase createTeachingDocument fallback:', e?.message);
+    }
+
+    // Save locally
+    this.saveLocalTeachingDocument(fullDoc);
+    return fullDoc;
   },
 
   async deleteTeachingDocument(id: string) {
     clearCache('teaching_docs');
-    const { error } = await supabase.from('teaching_documents').delete().eq('id', id);
-    if (error) throw error;
+    try {
+      await supabase.from('teaching_documents').delete().eq('id', id);
+    } catch (error) {
+      console.warn('Supabase deleteTeachingDocument fallback:', error);
+    }
+    this.deleteLocalTeachingDocument(id);
   },
 
   // ================= TEACHING MATERIALS (BAHAN AJAR & VIDEO) =================
@@ -809,6 +890,7 @@ export const dataService = {
 
   _parseJournal(jrn: any): TeachingJournal {
     let teaching_hour = jrn.teaching_hour || '';
+    let attendance_h = jrn.attendance_h !== undefined ? jrn.attendance_h : 28;
     let attendance_s = jrn.attendance_s ?? 0;
     let attendance_i = jrn.attendance_i ?? 0;
     let attendance_a = jrn.attendance_a ?? 0;
@@ -822,6 +904,7 @@ export const dataService = {
         try {
           const meta = JSON.parse(match[1]);
           if (!teaching_hour && meta.jam) teaching_hour = meta.jam;
+          if (meta.h !== undefined) attendance_h = meta.h;
           if (attendance_s === undefined || attendance_s === 0) attendance_s = meta.s ?? 0;
           if (attendance_i === undefined || attendance_i === 0) attendance_i = meta.i ?? 0;
           if (attendance_a === undefined || attendance_a === 0) attendance_a = meta.a ?? 0;
@@ -841,6 +924,7 @@ export const dataService = {
     return {
       ...jrn,
       teaching_hour,
+      attendance_h,
       attendance_s,
       attendance_i,
       attendance_a,
@@ -902,6 +986,7 @@ export const dataService = {
             learning_objectives: 'Peserta didik mampu memahami hakikat salat dan zikir untuk ketenteraman jiwa.',
             methods: 'Diskusi Kelompok, Ceramah Interaktif, Tanya Jawab',
             activities: '1. Pembukaan: Tadarus Al-Qur’an QS An-Nisa: 103.\n2. Inti: Analisis dampak zikir terhadap ketenangan hati & diskusi kelompok.\n3. Penutup: Pengambilan kesimpulan bersama & refleksi.',
+            attendance_h: 31,
             attendance_s: 1,
             attendance_i: 0,
             attendance_a: 0,
@@ -918,6 +1003,7 @@ export const dataService = {
             learning_objectives: 'Peserta didik mampu mengamalkan makna Asmaul Husna Al-Alim, Al-Khabir, As-Sami, Al-Bashir.',
             methods: 'Problem Based Learning, Diskusi, Analisis Kasus',
             activities: '1. Pembukaan: Membaca Asmaul Husna bersama.\n2. Inti: Diskusi kelompok menghubungkan sifat Al-Alim dan kejujuran saat ujian.\n3. Penutup: Evaluasi pemahaman mandiri dan tindak lanjut.',
+            attendance_h: 31,
             attendance_s: 0,
             attendance_i: 1,
             attendance_a: 0,
@@ -934,6 +1020,7 @@ export const dataService = {
             learning_objectives: 'Peserta didik mampu mempraktikkan rukun dan syarat tayammum secara tartil.',
             methods: 'Demonstrasi Langsung, Praktik Berkelompok',
             activities: '1. Pembukaan: Doa bersama dan apersepsi sebab-sebab diperbolehkannya tayammum.\n2. Inti: Demonstrasi tayammum di musala sekolah dan praktik bergantian antarkelompok.\n3. Penutup: Koreksi gerakan dan penilaian performa siswa.',
+            attendance_h: 32,
             attendance_s: 0,
             attendance_i: 0,
             attendance_a: 0,
@@ -956,6 +1043,7 @@ export const dataService = {
     clearCache('journals');
     const metaTag = `\n[JRN_META:${JSON.stringify({
       jam: item.teaching_hour || '',
+      h: item.attendance_h ?? 0,
       s: item.attendance_s ?? 0,
       i: item.attendance_i ?? 0,
       a: item.attendance_a ?? 0,
@@ -1021,6 +1109,7 @@ export const dataService = {
       learning_objectives: item.learning_objectives || '',
       methods: item.methods || '',
       activities: item.activities || '',
+      attendance_h: item.attendance_h ?? 0,
       attendance_s: item.attendance_s ?? 0,
       attendance_i: item.attendance_i ?? 0,
       attendance_a: item.attendance_a ?? 0,
@@ -1038,6 +1127,7 @@ export const dataService = {
     clearCache('journals');
     const metaTag = `\n[JRN_META:${JSON.stringify({
       jam: updates.teaching_hour || '',
+      h: updates.attendance_h ?? 0,
       s: updates.attendance_s ?? 0,
       i: updates.attendance_i ?? 0,
       a: updates.attendance_a ?? 0,
@@ -1064,6 +1154,7 @@ export const dataService = {
     try {
       const sanitized: any = { ...updates };
       delete sanitized.teaching_hour;
+      delete sanitized.attendance_h;
       delete sanitized.attendance_s;
       delete sanitized.attendance_i;
       delete sanitized.attendance_a;

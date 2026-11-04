@@ -218,7 +218,7 @@ table.content-table th {
         <th style="width: 75px;">Jam Ke-</th>
         <th style="width: 140px;">Materi Pokok</th>
         <th>Kegiatan Pembelajaran (KBM)</th>
-        <th style="width: 75px;">Kehadiran<br/>(S, I, A)</th>
+        <th style="width: 85px;">Kehadiran<br/>(H, S, I, A)</th>
         <th style="width: 100px;">Keterangan</th>
         <th style="width: 45px;">Paraf</th>
       </tr>
@@ -323,7 +323,7 @@ export const exportTeacherJournalToPdf = (
       'Jam Ke-',
       'Materi Pokok',
       'Kegiatan KBM',
-      'Kehadiran (S,I,A)',
+      'Kehadiran (H, S, I, A)',
       'Keterangan',
       'Paraf',
     ]],

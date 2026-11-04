@@ -46,12 +46,13 @@ export const TeacherJournalView: React.FC = () => {
   const [printClassId, setPrintClassId] = useState<string>('');
 
   // Form fields matching user requirements:
-  // no, hari/tanggal, kelas, jam, Materi Pokok, kegiatan KBM, Kehadiran siswa (S,I,A), Ket
+  // no, hari/tanggal, kelas, jam, Materi Pokok, kegiatan KBM, Kehadiran siswa (Hadir, S, I, A), Ket
   const [classId, setClassId] = useState('');
   const [journalDate, setJournalDate] = useState(new Date().toISOString().slice(0, 10));
   const [teachingHour, setTeachingHour] = useState('Jam ke-1 s.d 2 (07.30 - 08.50)');
   const [topic, setTopic] = useState('');
   const [activities, setActivities] = useState('');
+  const [attendanceH, setAttendanceH] = useState<number | string>(30);
   const [attendanceS, setAttendanceS] = useState<number | string>(0);
   const [attendanceI, setAttendanceI] = useState<number | string>(0);
   const [attendanceA, setAttendanceA] = useState<number | string>(0);
@@ -106,7 +107,7 @@ export const TeacherJournalView: React.FC = () => {
     setActivities(
       '1. Pendahuluan:\n' +
       '   - Berdoa bersama dan tadarus Al-Qur’an / Asmaul Husna.\n' +
-      '   - Memeriksa kehadiran (S, I, A), kerapihan kelas, dan apersepsi materi.\n' +
+      '   - Memeriksa kehadiran siswa (Hadir, Sakit, Izin, Alpa), kerapihan kelas, dan apersepsi materi.\n' +
       '2. Kegiatan Inti:\n' +
       '   - Penjelasan materi pokok dengan tanya jawab interaktif.\n' +
       '   - Diskusi kelompok dan pemecahan kasus kontekstual islami.\n' +
@@ -128,20 +129,23 @@ export const TeacherJournalView: React.FC = () => {
     try {
       const records = await dataService.getAttendance(classId, journalDate);
       if (records && records.length > 0) {
+        let countH = 0;
         let countS = 0;
         let countI = 0;
         let countA = 0;
         records.forEach((rec) => {
-          if (rec.status === 'sakit') countS++;
+          if (rec.status === 'hadir') countH++;
+          else if (rec.status === 'sakit') countS++;
           else if (rec.status === 'izin') countI++;
           else if (rec.status === 'alpa') countA++;
         });
+        setAttendanceH(countH);
         setAttendanceS(countS);
         setAttendanceI(countI);
         setAttendanceA(countA);
         setAlertMsg({
           type: 'success',
-          text: `Berhasil menarik data absensi: S=${countS}, I=${countI}, A=${countA}`,
+          text: `Berhasil menarik data absensi: Hadir=${countH}, S=${countS}, I=${countI}, A=${countA}`,
         });
       } else {
         setAlertMsg({
@@ -166,6 +170,7 @@ export const TeacherJournalView: React.FC = () => {
       '2. Kegiatan Inti: Pemaparan materi, diskusi kelompok terarah, tanya jawab.\n' +
       '3. Penutup: Refleksi pembelajaran, kesimpulan, dan doa penutup.'
     );
+    setAttendanceH(30);
     setAttendanceS(0);
     setAttendanceI(0);
     setAttendanceA(0);
@@ -183,6 +188,7 @@ export const TeacherJournalView: React.FC = () => {
     setTeachingHour(jrn.teaching_hour || 'Jam ke-1 s.d 2 (07.30 - 08.50)');
     setTopic(jrn.topic);
     setActivities(jrn.activities);
+    setAttendanceH(jrn.attendance_h ?? 30);
     setAttendanceS(jrn.attendance_s ?? 0);
     setAttendanceI(jrn.attendance_i ?? 0);
     setAttendanceA(jrn.attendance_a ?? 0);
@@ -211,6 +217,7 @@ export const TeacherJournalView: React.FC = () => {
         teaching_hour: teachingHour.trim(),
         topic: topic.trim(),
         activities: activities.trim(),
+        attendance_h: Number(attendanceH) || 0,
         attendance_s: Number(attendanceS) || 0,
         attendance_i: Number(attendanceI) || 0,
         attendance_a: Number(attendanceA) || 0,
@@ -381,6 +388,7 @@ export const TeacherJournalView: React.FC = () => {
 
       const exportItems = journalsForPrint.map((jrn, idx) => {
         const { dayName, fullDate } = formatDayAndDate(jrn.journal_date);
+        const hVal = Number(jrn.attendance_h) || 0;
         const sVal = Number(jrn.attendance_s) || 0;
         const iVal = Number(jrn.attendance_i) || 0;
         const aVal = Number(jrn.attendance_a) || 0;
@@ -393,7 +401,7 @@ export const TeacherJournalView: React.FC = () => {
           hour: jrn.teaching_hour || '-',
           topic: jrn.topic || '-',
           activities: jrn.activities || '-',
-          attendanceStr: `S:${sVal} I:${iVal} A:${aVal}`,
+          attendanceStr: `H:${hVal} S:${sVal} I:${iVal} A:${aVal}`,
           notes: jrn.notes || 'KBM terlaksana dengan tuntas',
         };
       });
@@ -464,8 +472,8 @@ export const TeacherJournalView: React.FC = () => {
               <th className="border border-black py-2 px-2 text-center w-24">Jam Ke-</th>
               <th className="border border-black py-2 px-2.5 text-left min-w-[140px]">Materi Pokok</th>
               <th className="border border-black py-2 px-3 text-left min-w-[180px]">Kegiatan Pembelajaran (KBM)</th>
-              <th className="border border-black py-2 px-2 text-center w-24">
-                Kehadiran<br /><span className="text-[8pt] font-normal">(S, I, A)</span>
+              <th className="border border-black py-2 px-2 text-center w-28">
+                Kehadiran<br /><span className="text-[8pt] font-normal">(Hadir, S, I, A)</span>
               </th>
               <th className="border border-black py-2 px-2.5 text-left min-w-[120px]">Keterangan</th>
               <th className="border border-black py-2 px-1 text-center w-14">Paraf</th>
@@ -481,6 +489,7 @@ export const TeacherJournalView: React.FC = () => {
             ) : (
               journalsForPrint.map((jrn, idx) => {
                 const { dayName, fullDate } = formatDayAndDate(jrn.journal_date);
+                const hVal = Number(jrn.attendance_h) || 0;
                 const sVal = Number(jrn.attendance_s) || 0;
                 const iVal = Number(jrn.attendance_i) || 0;
                 const aVal = Number(jrn.attendance_a) || 0;
@@ -512,7 +521,7 @@ export const TeacherJournalView: React.FC = () => {
                       {jrn.activities}
                     </td>
                     <td className="border border-black py-2 px-2 text-center font-mono text-[8.5pt] whitespace-nowrap">
-                      S: {sVal} &bull; I: {iVal} &bull; A: {aVal}
+                      H: {hVal} &bull; S: {sVal} &bull; I: {iVal} &bull; A: {aVal}
                     </td>
                     <td className="border border-black py-2 px-2.5 text-[8.5pt]">
                       {jrn.notes || jrn.reflection || 'KBM terlaksana tuntas'}
@@ -702,9 +711,9 @@ export const TeacherJournalView: React.FC = () => {
                 <th className="py-3 px-2.5 w-28 text-center border-r border-slate-800">Jam</th>
                 <th className="py-3 px-4 min-w-[200px] border-r border-slate-800">Materi Pokok</th>
                 <th className="py-3 px-4 min-w-[240px] border-r border-slate-800">Kegiatan KBM</th>
-                <th className="py-3 px-3 min-w-[150px] text-center border-r border-slate-800">
+                <th className="py-3 px-3 min-w-[175px] text-center border-r border-slate-800">
                   <div>Kehadiran Siswa</div>
-                  <div className="text-[10px] font-normal text-slate-400">(S, I, A)</div>
+                  <div className="text-[10px] font-normal text-emerald-400">(Hadir, S, I, A)</div>
                 </th>
                 <th className="py-3 px-3 min-w-[140px] border-r border-slate-800">Ket</th>
                 <th className="py-3 px-2 w-20 text-center">Aksi</th>
@@ -728,6 +737,7 @@ export const TeacherJournalView: React.FC = () => {
               ) : (
                 filteredJournals.map((jrn, idx) => {
                   const { dayName, fullDate } = formatDayAndDate(jrn.journal_date);
+                  const hVal = Number(jrn.attendance_h) || 0;
                   const sVal = Number(jrn.attendance_s) || 0;
                   const iVal = Number(jrn.attendance_i) || 0;
                   const aVal = Number(jrn.attendance_a) || 0;
@@ -794,9 +804,20 @@ export const TeacherJournalView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* 7. KEHADIRAN SISWA (S, I, A) */}
+                      {/* 7. KEHADIRAN SISWA (HADIR, S, I, A) */}
                       <td className="py-3 px-3 border-r border-slate-800/80 text-center">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[11px] font-bold border ${
+                              hVal > 0
+                                ? 'bg-emerald-950/70 text-emerald-300 border-emerald-700/80'
+                                : 'bg-slate-950/60 text-slate-400 border-slate-800'
+                            }`}
+                            title="Hadir"
+                          >
+                            <span className="font-semibold text-[10px]">H:</span> {hVal}
+                          </span>
+
                           <span
                             className={`px-1.5 py-0.5 rounded text-[11px] font-bold border ${
                               sVal > 0
@@ -1145,12 +1166,12 @@ export const TeacherJournalView: React.FC = () => {
                 />
               </div>
 
-              {/* Row 5: Kehadiran Siswa (S, I, A) */}
+              {/* Row 5: Kehadiran Siswa (Hadir, Sakit, Izin, Alpa) */}
               <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-emerald-400" />
-                    <span>Kehadiran Siswa (S, I, A)</span>
+                    <span>Kehadiran Siswa (Hadir, Sakit, Izin, Alpa)</span>
                   </label>
                   <button
                     type="button"
@@ -1164,7 +1185,20 @@ export const TeacherJournalView: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-400 mb-1">
+                      H (Hadir)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={attendanceH}
+                      onChange={(e) => setAttendanceH(e.target.value)}
+                      className="w-full bg-slate-900 border border-emerald-900/60 rounded-lg px-2.5 py-1.5 text-xs text-white text-center font-bold font-mono outline-none focus:border-emerald-400"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-[11px] font-bold text-amber-400 mb-1">
                       S (Sakit)
@@ -1292,7 +1326,10 @@ export const TeacherJournalView: React.FC = () => {
 
               <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
                 <span className="text-slate-400 block text-[11px] mb-1">Kehadiran Siswa:</span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-800 font-mono">
+                    Hadir (H): {detailItem.attendance_h ?? 0}
+                  </span>
                   <span className="px-2 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-800 font-mono">
                     Sakit (S): {detailItem.attendance_s ?? 0}
                   </span>
@@ -1478,7 +1515,7 @@ export const TeacherJournalView: React.FC = () => {
                       <th className="border border-black p-1 text-center w-20">Jam</th>
                       <th className="border border-black p-1.5 text-left">Materi Pokok</th>
                       <th className="border border-black p-1.5 text-left">Kegiatan KBM</th>
-                      <th className="border border-black p-1 text-center w-20">Kehadiran (S,I,A)</th>
+                      <th className="border border-black p-1 text-center w-24">Kehadiran (H,S,I,A)</th>
                       <th className="border border-black p-1.5 text-left">Ket</th>
                       <th className="border border-black p-1 text-center w-12">Paraf</th>
                     </tr>
@@ -1512,7 +1549,7 @@ export const TeacherJournalView: React.FC = () => {
                               {jrn.activities}
                             </td>
                             <td className="border border-black p-1 text-center font-mono text-[7.5pt] whitespace-nowrap">
-                              S:{jrn.attendance_s ?? 0} I:{jrn.attendance_i ?? 0} A:{jrn.attendance_a ?? 0}
+                              H:{jrn.attendance_h ?? 0} S:{jrn.attendance_s ?? 0} I:{jrn.attendance_i ?? 0} A:{jrn.attendance_a ?? 0}
                             </td>
                             <td className="border border-black p-1.5 text-[7.5pt]">
                               {jrn.notes || 'KBM terlaksana tuntas'}

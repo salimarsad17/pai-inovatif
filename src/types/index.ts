@@ -56,11 +56,16 @@ export interface StudentItem {
 export interface TeachingDocument {
   id: string;
   title: string;
-  category: 'CP' | 'TP' | 'ATP' | 'Prota' | 'Promes' | 'Modul Ajar' | 'RPP' | 'Dokumen Pendukung';
+  category: 'CP' | 'TP' | 'ATP' | 'Prota' | 'Promes' | 'Modul Ajar' | 'KKTP' | 'Dokumen Pendukung';
   grade_level: number;
   semester: string;
   academic_year: string;
   file_url?: string | null;
+  file_data?: string | null; // Base64 data URL
+  file_name?: string | null;
+  file_type?: string | null; // e.g. 'pdf' | 'docx' | 'xlsx' | 'image' | 'txt'
+  file_size?: number | null;
+  content_text?: string | null; // Document text/content for instant in-app reading
   description?: string;
   created_by?: string;
   created_at?: string;
@@ -87,6 +92,25 @@ export interface TeachingMaterial {
   class?: ClassItem;
 }
 
+export interface TextbookChapter {
+  id: string;
+  grade_level: number;
+  chapter_number: number;
+  title: string;
+  semester: 'Ganjil' | 'Genap';
+  tag: string; // e.g. "PMM", "Buku Siswa Kemendikbud", "Kurikulum Merdeka"
+  description: string;
+  cover_image: string;
+  file_url?: string | null;
+  file_data?: string | null; // base64 data url for Word, PDF, Excel, PNG
+  file_name?: string | null;
+  file_type?: string | null; // 'docx' | 'pdf' | 'xlsx' | 'image' | 'txt'
+  file_size?: number | null;
+  content_text?: string | null; // Full text / summary of the chapter
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface TeachingJournal {
   id: string;
   teacher_id: string;
@@ -97,6 +121,7 @@ export interface TeachingJournal {
   learning_objectives?: string; // Tujuan Pembelajaran
   methods?: string; // Metode
   activities: string; // Kegiatan KBM
+  attendance_h?: number | string; // Kehadiran H (Hadir)
   attendance_s?: number | string; // Kehadiran S (Sakit)
   attendance_i?: number | string; // Kehadiran I (Izin)
   attendance_a?: number | string; // Kehadiran A (Alpa)
@@ -248,3 +273,68 @@ export interface AuditLog {
   created_at: string;
   actor?: UserProfile;
 }
+
+// ================= CLASS Q&A & MESSAGING =================
+export interface ClassQnAReply {
+  id: string;
+  message_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: 'guru' | 'siswa';
+  sender_avatar?: string;
+  content: string;
+  created_at: string;
+}
+
+export interface ClassQnAMessage {
+  id: string;
+  class_id?: string;
+  grade_level: number; // 7, 8, 9
+  question_number: number;
+  title: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: 'guru' | 'siswa';
+  sender_avatar?: string;
+  content: string;
+  status: 'ANSWERED' | 'PENDING';
+  created_at: string;
+  replies: ClassQnAReply[];
+  attachment_name?: string;
+  attachment_url?: string;
+  attachment_type?: string;
+}
+
+export interface ClassQnAAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  grade_level: number;
+  category: string;
+}
+
+// ================= MEDIA AJAR =================
+export type MediaAjarCategory = 'video' | 'game' | 'lms_modul';
+
+export interface MediaAjarItem {
+  id: string;
+  category: MediaAjarCategory;
+  title: string;
+  description?: string;
+  grade_level: number;
+  url?: string;
+  embed_url?: string;
+  file_name?: string;
+  file_type?: string;
+  file_size?: number;
+  file_data?: string;
+  views_count?: number;
+  play_count?: number;
+  tag?: string;
+  thumbnail_url?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+

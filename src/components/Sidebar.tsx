@@ -22,6 +22,7 @@ import {
   BarChart3,
   BookOpen,
   Video,
+  Play,
   ClipboardList,
   FileQuestion,
   Calendar,
@@ -152,8 +153,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Pesan (NEW 4) */}
             <button
-              onClick={() => onSelectMenu('beranda')}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors"
+              onClick={() => onSelectMenu('pesan')}
+              className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${
+                currentMenu === 'pesan'
+                  ? 'bg-[#151c27] text-white font-bold border-l-4 border-amber-500'
+                  : 'hover:bg-[#151c27]/70 text-slate-300'
+              }`}
             >
               <div className="flex items-center gap-3">
                 <MessageSquare className="w-4 h-4 text-slate-400" />
@@ -353,21 +358,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
 
-            {/* Modul & AI Generator */}
+            {/* Media Ajar (Video Pembelajaran, Game Edukasi, LMS & Modul) */}
             <button
               onClick={() => onSelectMenu('bahan_ajar_ai')}
-              className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#151c27]/70 text-slate-300 transition-colors ${
+              className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${
                 currentMenu === 'bahan_ajar_ai'
                   ? 'bg-[#151c27] text-white font-bold border-l-4 border-amber-500'
-                  : ''
+                  : 'hover:bg-[#151c27]/70 text-slate-300'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Modul & AI Generator</span>
+                <Play className="w-4 h-4 text-cyan-400 fill-cyan-400/30" />
+                <span>Media Ajar</span>
               </div>
-              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] px-1.5 py-0.2 rounded font-bold">
-                ✨ AI
+              <span className="bg-gradient-to-r from-teal-500/20 to-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[9px] px-1.5 py-0.2 rounded font-bold">
+                Interaktif
               </span>
             </button>
 
@@ -499,6 +504,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <Calendar className="w-4 h-4 text-slate-400" />
               <span>Riwayat Kehadiran</span>
+            </button>
+            <button
+              onClick={() => onSelectMenu('siswa_pesan')}
+              className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${
+                currentMenu === 'siswa_pesan'
+                  ? 'bg-[#151c27] text-white font-bold border-l-4 border-amber-500'
+                  : 'hover:bg-[#151c27]/70 text-slate-300'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-4 h-4 text-emerald-400" />
+                <span>Pesan & Tanya Jawab</span>
+              </div>
+              <span className="bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
+                Q&A
+              </span>
             </button>
           </>
         )}
